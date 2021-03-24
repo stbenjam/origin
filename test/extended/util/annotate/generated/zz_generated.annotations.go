@@ -763,59 +763,59 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs  should adhere to Three Laws of Controllers": "should adhere to Three Laws of Controllers [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs adoption will orphan all RCs and adopt them back when recreated": "will orphan all RCs and adopt them back when recreated [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs adoption will orphan all RCs and adopt them back when recreated": "will orphan all RCs and adopt them back when recreated [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs generation should deploy based on a status version bump": "should deploy based on a status version bump [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs generation should deploy based on a status version bump": "should deploy based on a status version bump [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs ignores deployer and lets the config with a NewReplicationControllerCreated reason should let the deployment config with a NewReplicationControllerCreated reason": "should let the deployment config with a NewReplicationControllerCreated reason [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs initially should not deploy if pods never transition to ready": "should not deploy if pods never transition to ready [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs keep the deployer pod invariant valid should deal with cancellation after deployer pod succeeded": "should deal with cancellation after deployer pod succeeded [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs keep the deployer pod invariant valid should deal with cancellation after deployer pod succeeded": "should deal with cancellation after deployer pod succeeded [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs keep the deployer pod invariant valid should deal with cancellation of running deployment": "should deal with cancellation of running deployment [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs keep the deployer pod invariant valid should deal with config change in case the deployment is still running": "should deal with config change in case the deployment is still running [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs paused should disable actions on deployments": "should disable actions on deployments [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs paused should disable actions on deployments": "should disable actions on deployments [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs reaper [Slow] should delete all failed deployer pods and hook pods": "should delete all failed deployer pods and hook pods",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs rolled back should rollback to an older deployment": "should rollback to an older deployment [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs rolled back should rollback to an older deployment": "should rollback to an older deployment [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs should respect image stream tag reference policy resolve the image pull spec": "resolve the image pull spec [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs should respect image stream tag reference policy resolve the image pull spec": "resolve the image pull spec [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs viewing rollout history should print the rollout history": "should print the rollout history [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs viewing rollout history should print the rollout history": "should print the rollout history [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when changing image change trigger should successfully trigger from an updated image": "should successfully trigger from an updated image [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when changing image change trigger should successfully trigger from an updated image": "should successfully trigger from an updated image [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when run iteratively should immediately start a new deployment": "should immediately start a new deployment [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when run iteratively should only deploy the last deployment": "should only deploy the last deployment [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when run iteratively should only deploy the last deployment": "should only deploy the last deployment [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when tagging images should successfully tag the deployed image": "should successfully tag the deployed image [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs when tagging images should successfully tag the deployed image": "should successfully tag the deployed image [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with custom deployments should run the custom deployment steps": "should run the custom deployment steps [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with custom deployments should run the custom deployment steps": "should run the custom deployment steps [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with enhanced status should include various info in status": "should include various info in status [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with enhanced status should include various info in status": "should include various info in status [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with env in params referencing the configmap should expand the config map key to a value": "should expand the config map key to a value [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with env in params referencing the configmap should expand the config map key to a value": "should expand the config map key to a value [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with failing hook should get all logs from retried hooks": "should get all logs from retried hooks [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with failing hook should get all logs from retried hooks": "should get all logs from retried hooks [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with minimum ready seconds set should not transition the deployment to Complete before satisfied": "should not transition the deployment to Complete before satisfied [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with minimum ready seconds set should not transition the deployment to Complete before satisfied": "should not transition the deployment to Complete before satisfied [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with multiple image change triggers should run a successful deployment with a trigger used by different containers": "should run a successful deployment with a trigger used by different containers [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with multiple image change triggers should run a successful deployment with multiple triggers": "should run a successful deployment with multiple triggers [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with revision history limits should never persist more old deployments than acceptable after being observed by the controller": "should never persist more old deployments than acceptable after being observed by the controller [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with revision history limits should never persist more old deployments than acceptable after being observed by the controller": "should never persist more old deployments than acceptable after being observed by the controller [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with test deployments should run a deployment to completion and then scale to zero": "should run a deployment to completion and then scale to zero [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs with test deployments should run a deployment to completion and then scale to zero": "should run a deployment to completion and then scale to zero [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs won't deploy RC with unresolved images when patched with empty image": "when patched with empty image [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:DeploymentConfig] deploymentconfigs won't deploy RC with unresolved images when patched with empty image": "when patched with empty image [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-apps][Feature:Jobs] Users should be able to create and run a job in a user project": "Users should be able to create and run a job in a user project [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-apps][Feature:Jobs] Users should be able to create and run a job in a user project": "Users should be able to create and run a job in a user project [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-apps][Feature:OpenShiftControllerManager] TestDeployScale": "TestDeployScale [Suite:openshift/conformance/parallel]",
 
@@ -853,13 +853,13 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-arch] Managed cluster should set requests but not limits": "should set requests but not limits [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-arch] Managed cluster should should expose cluster services outside the cluster": "should expose cluster services outside the cluster [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-arch] Managed cluster should should expose cluster services outside the cluster": "should expose cluster services outside the cluster [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-arch] [Conformance] FIPS TestFIPS": "TestFIPS [Suite:openshift/conformance/parallel/minimal]",
 
 	"[Top Level] [sig-arch] ocp payload should be based on existing source [Serial] olm version should contain the source commit id": "[Serial] olm version should contain the source commit id [Suite:openshift/conformance/serial]",
 
-	"[Top Level] [sig-arch][Early] Managed cluster should start all core operators": "start all core operators [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-arch][Early] Managed cluster should start all core operators": "start all core operators [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-arch][Feature:ClusterUpgrade] Cluster should remain functional during upgrade [Disruptive]": "Cluster should remain functional during upgrade [Disruptive] [Serial]",
 
@@ -1133,7 +1133,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-autoscaling] [HPA] Horizontal pod autoscaling (scale resource: Custom Metrics from Stackdriver) should scale up with two metrics of type Pod from Stackdriver [Feature:CustomMetricsAutoscaling]": "should scale up with two metrics of type Pod from Stackdriver [Feature:CustomMetricsAutoscaling] [Skipped:gce] [Suite:openshift/conformance/parallel] [Suite:k8s]",
 
-	"[Top Level] [sig-builds][Feature:Builds] Multi-stage image builds should succeed": "should succeed [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-builds][Feature:Builds] Multi-stage image builds should succeed": "should succeed [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-builds][Feature:Builds] Optimized image builds  should succeed": "should succeed [Suite:openshift/conformance/parallel]",
 
@@ -1183,7 +1183,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-builds][Feature:Builds] s2i build with a root user image should create a root build and fail without a privileged SCC": "should create a root build and fail without a privileged SCC [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-builds][Feature:Builds] s2i build with a root user image should create a root build and pass with a privileged SCC": "should create a root build and pass with a privileged SCC [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-builds][Feature:Builds] s2i build with a root user image should create a root build and pass with a privileged SCC": "should create a root build and pass with a privileged SCC [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-builds][Feature:Builds] verify /run filesystem contents  are writeable using a simple Docker Strategy Build": "using a simple Docker Strategy Build [Suite:openshift/conformance/parallel]",
 
@@ -1383,7 +1383,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-builds][Feature:Builds][webhook] TestWebhookGitHubPushWithImageStream": "TestWebhookGitHubPushWithImageStream [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-cli] CLI can run inside of a busybox container": "can run inside of a busybox container [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-cli] CLI can run inside of a busybox container": "can run inside of a busybox container [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-cli] Kubectl Port forwarding With a server listening on 0.0.0.0 should support forwarding over websockets": "should support forwarding over websockets [Suite:openshift/conformance/parallel] [Suite:k8s]",
 
@@ -1519,7 +1519,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-cli] oc adm who-can": "who-can [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-cli] oc debug deployment configs from a build": "deployment configs from a build [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-cli] oc debug deployment configs from a build": "deployment configs from a build [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-cli] oc debug dissect deployment config debug": "dissect deployment config debug [Suite:openshift/conformance/parallel]",
 
@@ -1527,7 +1527,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-cli] oc debug ensure debug does not depend on a container actually existing for the selected resource": "ensure debug does not depend on a container actually existing for the selected resource [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-cli] oc debug ensure it works with image streams": "ensure it works with image streams [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-cli] oc debug ensure it works with image streams": "ensure it works with image streams [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-cli] oc explain list uncovered GroupVersionResources": "list uncovered GroupVersionResources [Suite:openshift/conformance/parallel]",
 
@@ -1541,7 +1541,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-cli] oc observe works as expected": "works as expected [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-cli] oc rsh specific flags should work well when access to a remote shell": "should work well when access to a remote shell [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-cli] oc rsh specific flags should work well when access to a remote shell": "should work well when access to a remote shell [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-cli][Feature:LegacyCommandTests][Disruptive][Serial] test-cmd: test/cmd/annotations.sh": "test/cmd/annotations.sh",
 
@@ -1635,7 +1635,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-cluster-lifecycle] CSRs from machines that are not recognized by the cloud provider are not approved": "CSRs from machines that are not recognized by the cloud provider are not approved [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-cluster-lifecycle] Pods cannot access the /config/master API endpoint": "Pods cannot access the /config/master API endpoint [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-cluster-lifecycle] Pods cannot access the /config/master API endpoint": "Pods cannot access the /config/master API endpoint [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-cluster-lifecycle][Feature:DisasterRecovery][Disruptive] [Feature:NodeRecovery] Cluster should survive master and worker failure and recover with machine health checks": "[Feature:NodeRecovery] Cluster should survive master and worker failure and recover with machine health checks [Serial]",
 
@@ -1749,15 +1749,15 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-etcd][Feature:DisasterRecovery][Disruptive] [Feature:EtcdRecovery] Cluster should restore itself after quorum loss": "[Feature:EtcdRecovery] Cluster should restore itself after quorum loss [Serial]",
 
-	"[Top Level] [sig-imageregistry][Feature:ImageAppend] Image append should create images by appending them": "should create images by appending them [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:ImageAppend] Image append should create images by appending them": "should create images by appending them [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-imageregistry][Feature:ImageExtract] Image extract should extract content from an image": "should extract content from an image [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:ImageExtract] Image extract should extract content from an image": "should extract content from an image [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-imageregistry][Feature:ImageInfo] Image info should display information about images": "should display information about images [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:ImageInfo] Image info should display information about images": "should display information about images [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-imageregistry][Feature:ImageLayers] Image layer subresource should identify a deleted image as missing": "should identify a deleted image as missing [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-imageregistry][Feature:ImageLayers] Image layer subresource should return layers from tagged images": "should return layers from tagged images [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:ImageLayers] Image layer subresource should return layers from tagged images": "should return layers from tagged images [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-imageregistry][Feature:ImageLookup] Image policy should perform lookup when the Deployment gets the resolve-names annotation later": "should perform lookup when the Deployment gets the resolve-names annotation later [Suite:openshift/conformance/parallel]",
 
@@ -1801,7 +1801,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-imageregistry][Feature:ImageStreamImport][Serial][Slow] ImageStream API TestImportRepositoryFromInsecureRegistry": "TestImportRepositoryFromInsecureRegistry",
 
-	"[Top Level] [sig-imageregistry][Feature:ImageTriggers] Annotation trigger reconciles after the image is overwritten": "reconciles after the image is overwritten [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:ImageTriggers] Annotation trigger reconciles after the image is overwritten": "reconciles after the image is overwritten [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-imageregistry][Feature:ImageTriggers] Image change build triggers TestMultipleImageChangeBuildTriggers": "TestMultipleImageChangeBuildTriggers [Suite:openshift/conformance/parallel]",
 
@@ -1829,11 +1829,11 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-imageregistry][Feature:ImageTriggers][Serial] ImageStream admission TestImageStreamTagsAdmission": "TestImageStreamTagsAdmission [Suite:openshift/conformance/serial]",
 
-	"[Top Level] [sig-imageregistry][Feature:Image] oc tag should change image reference for internal images": "should change image reference for internal images [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:Image] oc tag should change image reference for internal images": "should change image reference for internal images [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-imageregistry][Feature:Image] oc tag should preserve image reference for external images": "should preserve image reference for external images [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-imageregistry][Feature:Image] oc tag should work when only imagestreams api is available": "should work when only imagestreams api is available [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-imageregistry][Feature:Image] oc tag should work when only imagestreams api is available": "should work when only imagestreams api is available [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-imageregistry][Feature:Image] signature TestImageAddSignature": "TestImageAddSignature [Suite:openshift/conformance/parallel]",
 
@@ -1863,25 +1863,25 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-instrumentation] MetricsGrabber should grab all metrics from a Scheduler.": "should grab all metrics from a Scheduler. [Disabled:Broken] [Suite:k8s]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should have a AlertmanagerReceiversNotConfigured alert in firing state": "should have a AlertmanagerReceiversNotConfigured alert in firing state [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should have a AlertmanagerReceiversNotConfigured alert in firing state": "should have a AlertmanagerReceiversNotConfigured alert in firing state [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should have important platform topology metrics": "should have important platform topology metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should have important platform topology metrics": "should have important platform topology metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should have non-Pod host cAdvisor metrics": "should have non-Pod host cAdvisor metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should have non-Pod host cAdvisor metrics": "should have non-Pod host cAdvisor metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should provide ingress metrics": "should provide ingress metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should provide ingress metrics": "should provide ingress metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should provide named network metrics": "should provide named network metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should provide named network metrics": "should provide named network metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should report telemetry if a cloud.openshift.com token is present [Late]": "should report telemetry if a cloud.openshift.com token is present [Late] [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should report telemetry if a cloud.openshift.com token is present [Late]": "should report telemetry if a cloud.openshift.com token is present [Late] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should start and expose a secured proxy and unsecured metrics": "should start and expose a secured proxy and unsecured metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster should start and expose a secured proxy and unsecured metrics": "should start and expose a secured proxy and unsecured metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster shouldn't have failing rules evaluation": "shouldn't have failing rules evaluation [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster shouldn't have failing rules evaluation": "shouldn't have failing rules evaluation [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early]": "shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early] [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early]": "shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster when using openshift-sdn should be able to get the sdn ovs flows": "should be able to get the sdn ovs flows [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation] Prometheus when installed on the cluster when using openshift-sdn should be able to get the sdn ovs flows": "should be able to get the sdn ovs flows [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-instrumentation] Stackdriver Monitoring should have accelerator metrics [Feature:StackdriverAcceleratorMonitoring]": "should have accelerator metrics [Feature:StackdriverAcceleratorMonitoring] [Disabled:Unimplemented] [Suite:k8s]",
 
@@ -1895,17 +1895,17 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-instrumentation] Stackdriver Monitoring should run Stackdriver Metadata Agent [Feature:StackdriverMetadataAgent]": "should run Stackdriver Metadata Agent [Feature:StackdriverMetadataAgent] [Disabled:Unimplemented] [Suite:k8s]",
 
-	"[Top Level] [sig-instrumentation][Late] Alerts should have a Watchdog alert in firing state the entire cluster run": "should have a Watchdog alert in firing state the entire cluster run [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation][Late] Alerts should have a Watchdog alert in firing state the entire cluster run": "should have a Watchdog alert in firing state the entire cluster run [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation][Late] Alerts shouldn't exceed the 500 series limit of total series sent via telemetry from each cluster": "shouldn't exceed the 500 series limit of total series sent via telemetry from each cluster [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation][Late] Alerts shouldn't exceed the 500 series limit of total series sent via telemetry from each cluster": "shouldn't exceed the 500 series limit of total series sent via telemetry from each cluster [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation][Late] Alerts shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured": "shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation][Late] Alerts shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured": "shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-instrumentation][sig-builds][Feature:Builds] Prometheus when installed on the cluster should start and expose a secured proxy and verify build metrics": "should start and expose a secured proxy and verify build metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-instrumentation][sig-builds][Feature:Builds] Prometheus when installed on the cluster should start and expose a secured proxy and verify build metrics": "should start and expose a secured proxy and verify build metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-network-edge] DNS should answer endpoint and wildcard queries for the cluster": "should answer endpoint and wildcard queries for the cluster [Disabled:Broken]",
 
-	"[Top Level] [sig-network-edge][Conformance][Area:Networking][Feature:Router] The HAProxy router should be able to connect to a service that is idled because a GET on the route will unidle it": "should be able to connect to a service that is idled because a GET on the route will unidle it [Suite:openshift/conformance/parallel/minimal]",
+	"[Top Level] [sig-network-edge][Conformance][Area:Networking][Feature:Router] The HAProxy router should be able to connect to a service that is idled because a GET on the route will unidle it": "should be able to connect to a service that is idled because a GET on the route will unidle it [Skipped:Disconnected] [Suite:openshift/conformance/parallel/minimal]",
 
 	"[Top Level] [sig-network-edge][Conformance][Area:Networking][Feature:Router] The HAProxy router should pass the gRPC interoperability tests": "should pass the gRPC interoperability tests [Suite:openshift/conformance/parallel/minimal]",
 
@@ -2351,33 +2351,33 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-network][Feature:Router] The HAProxy router converges when multiple routers are writing status": "converges when multiple routers are writing status [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should enable openshift-monitoring to pull metrics": "should enable openshift-monitoring to pull metrics [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should enable openshift-monitoring to pull metrics": "should enable openshift-monitoring to pull metrics [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should expose a health check on the metrics port": "should expose a health check on the metrics port [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should expose a health check on the metrics port": "should expose a health check on the metrics port [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should expose prometheus metrics for a route": "should expose prometheus metrics for a route [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should expose prometheus metrics for a route": "should expose prometheus metrics for a route [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should expose the profiling endpoints": "should expose the profiling endpoints [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should expose the profiling endpoints": "should expose the profiling endpoints [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should override the route host for overridden domains with a custom value": "should override the route host for overridden domains with a custom value [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should override the route host for overridden domains with a custom value": "should override the route host for overridden domains with a custom value [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should override the route host with a custom value": "should override the route host with a custom value [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should override the route host with a custom value": "should override the route host with a custom value [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should respond with 503 to unrecognized hosts": "should respond with 503 to unrecognized hosts [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should respond with 503 to unrecognized hosts": "should respond with 503 to unrecognized hosts [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should run even if it has no access to update status": "should run even if it has no access to update status [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should run even if it has no access to update status": "should run even if it has no access to update status [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve a route that points to two services and respect weights": "should serve a route that points to two services and respect weights [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve a route that points to two services and respect weights": "should serve a route that points to two services and respect weights [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve routes that were created from an ingress": "should serve routes that were created from an ingress [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve routes that were created from an ingress": "should serve routes that were created from an ingress [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve the correct routes when running with the haproxy config manager": "should serve the correct routes when running with the haproxy config manager [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve the correct routes when scoped to a single namespace and label set": "should serve the correct routes when scoped to a single namespace and label set [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should serve the correct routes when scoped to a single namespace and label set": "should serve the correct routes when scoped to a single namespace and label set [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should set Forwarded headers appropriately": "should set Forwarded headers appropriately [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should set Forwarded headers appropriately": "should set Forwarded headers appropriately [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-network][Feature:Router] The HAProxy router should support reencrypt to services backed by a serving certificate automatically": "should support reencrypt to services backed by a serving certificate automatically [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-network][Feature:Router] The HAProxy router should support reencrypt to services backed by a serving certificate automatically": "should support reencrypt to services backed by a serving certificate automatically [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-network][endpoints] admission TestEndpointAdmission": "TestEndpointAdmission [Suite:openshift/conformance/parallel]",
 
@@ -2403,7 +2403,7 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-node] Downward API should provide pod name, namespace and IP address as env vars [NodeConformance] [Conformance]": "should provide pod name, namespace and IP address as env vars [NodeConformance] [Conformance] [Suite:openshift/conformance/parallel/minimal] [Suite:k8s]",
 
-	"[Top Level] [sig-node] Managed cluster should report ready nodes the entire duration of the test run [Late]": "should report ready nodes the entire duration of the test run [Late] [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-node] Managed cluster should report ready nodes the entire duration of the test run [Late]": "should report ready nodes the entire duration of the test run [Late] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
 	"[Top Level] [sig-node] PodTemplates should delete a collection of pod templates [Conformance]": "should delete a collection of pod templates [Conformance] [Suite:openshift/conformance/parallel/minimal] [Suite:k8s]",
 
@@ -12343,9 +12343,9 @@ var annotations = map[string]string{
 
 	"[Top Level] [sig-storage] vsphere statefulset [Feature:vsphere] vsphere statefulset testing": "vsphere statefulset testing [Suite:openshift/conformance/parallel] [Suite:k8s]",
 
-	"[Top Level] [sig-storage][Late] Metrics should report short attach times": "should report short attach times [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-storage][Late] Metrics should report short attach times": "should report short attach times [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 
-	"[Top Level] [sig-storage][Late] Metrics should report short mount times": "should report short mount times [Suite:openshift/conformance/parallel]",
+	"[Top Level] [sig-storage][Late] Metrics should report short mount times": "should report short mount times [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
 }
 
 func init() {
