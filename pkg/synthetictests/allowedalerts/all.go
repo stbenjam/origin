@@ -74,5 +74,10 @@ func AllAlertTests(ctx context.Context, clientConfig *rest.Config, duration time
 	ret = append(ret, newAlert("samples", "SamplesImagestreamImportFailing").pending().neverFail().toTests()...)
 	ret = append(ret, newAlert("samples", "SamplesImagestreamImportFailing").firing().toTests()...)
 
+	// https://issues.redhat.com/browse/OCPBUGS-1083
+	ret = append(ret, newAlert("openshift-ovn-kubernetes", "OVNKubernetesControllerDisconnectedSouthboundDatabase").firing().toTests()...)
+	ret = append(ret, newAlert("openshift-ovn-kubernetes", "OVNKubernetesNorthoundDatabaseClusterMemberError").firing().toTests()...)
+	ret = append(ret, newAlert("openshift-ovn-kubernetes", "OVNKubernetesNorthboundDatabaseInboundConnectionMissing").firing().toTests()...)
+
 	return ret
 }
