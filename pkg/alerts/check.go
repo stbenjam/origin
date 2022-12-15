@@ -116,9 +116,11 @@ sort_desc(
 		framework.Logf("Alerts were detected which are allowed:\n\n%s", strings.Join(debug.List(), "\n"))
 	}
 	if flakes := sets.NewString().Union(knownViolations).Union(unexpectedViolations).Union(unexpectedViolationsAsFlakes); len(flakes) > 0 {
-		// The two duplicated code paths merged together here had slightly different ways of reporting flakes:
+		// TODO: The two tests that had this duplicated code had slightly different ways of reporting flakes
+		// that I do not fully understand the implications of. Fork the logic here.
 		if f != nil {
 			// when called from alert.go within an UpgradeTest with a framework available
+			// f.TestSummaries is the part I'm unsure about here.
 			disruption.FrameworkFlakef(f, "Unexpected alert behavior:\n\n%s", strings.Join(flakes.List(), "\n"))
 		} else {
 			// when called from prometheus.go with no framework available

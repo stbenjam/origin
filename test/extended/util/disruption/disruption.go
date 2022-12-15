@@ -1,8 +1,5 @@
 package disruption
 
-// TODO: this testing framework is used by many upgrade tests beyond disruption, the package is somewhat misleading
-// and it should probably be relocated.
-
 import (
 	"encoding/json"
 	"encoding/xml"
@@ -17,8 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift/origin/pkg/riskanalysis"
-	"github.com/openshift/origin/pkg/test/ginkgo/junitapi"
 	admissionapi "k8s.io/pod-security-admission/api"
 
 	g "github.com/onsi/ginkgo/v2"
@@ -30,6 +25,7 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework/ginkgowrapper"
 	e2eskipper "k8s.io/kubernetes/test/e2e/framework/skipper"
 	"k8s.io/kubernetes/test/e2e/upgrades"
+	"k8s.io/kubernetes/test/utils/junit"
 )
 
 const (
@@ -88,22 +84,23 @@ type TestData struct {
 // test is being executed. Description is used to populate the JUnit suite name, and testname is
 // used to define the overall test that will be run.
 func Run(f *framework.Framework, description, testname string, adapter TestData, invariants []upgrades.Test, fn func()) {
-	testSuite := &junitapi.JUnitTestSuite{Name: description}
+	testSuite := &junit.TestSuite{Name: description, Package: testname}
+	test := &junit.TestCase{Name: testname, Classname: testname}
+	testSuite.TestCases = append(testSuite.TestCases, test)
 	cm := chaosmonkey.New(func() {
 		start := time.Now()
-		defer finalizeTest(start, testname, testname, testSuite, f)
+		defer finalizeTest(start, test, testSuite, f)
 		defer g.GinkgoRecover()
 		fn()
 	})
-	runChaosmonkey(cm, adapter, invariants, testSuite, testname)
+	runChaosmonkey(cm, adapter, invariants, testSuite)
 }
 
 func runChaosmonkey(
 	cm *chaosmonkey.Chaosmonkey,
 	testData TestData,
 	tests []upgrades.Test,
-	testSuite *junitapi.JUnitTestSuite,
-	packageName string,
+	testSuite *junit.TestSuite,
 ) {
 	testFrameworks := createTestFrameworks(tests)
 	for _, t := range tests {
@@ -111,6 +108,11 @@ func runChaosmonkey(
 		if dn, ok := t.(testWithDisplayName); ok {
 			displayName = dn.DisplayName()
 		}
+		testCase := &junit.TestCase{
+			Name:      displayName,
+			Classname: "disruption_tests",
+		}
+		testSuite.TestCases = append(testSuite.TestCases, testCase)
 
 		f, ok := testFrameworks[t.Name()]
 		if !ok {
@@ -120,8 +122,7 @@ func runChaosmonkey(
 			TestData:        testData,
 			framework:       f,
 			test:            t,
-			testName:        displayName,
-			className:       "disruption_tests",
+			testReport:      testCase,
 			testSuiteReport: testSuite,
 		}
 		cm.Register(cma.Test)
@@ -129,36 +130,37 @@ func runChaosmonkey(
 
 	start := time.Now()
 	defer func() {
+		testSuite.Update()
+		testSuite.Time = time.Since(start).Seconds()
 
-		// Calculate NumFailed and NumSkipped
-		for _, tc := range testSuite.TestCases {
-			testSuite.NumTests++
-			if tc.FailureOutput != nil {
-				testSuite.NumFailed++
+		// if the test fails and all failures are described as "Flake", create a second
+		// test case that is listed as success so the test is properly marked as flaky
+		for _, testCase := range testSuite.TestCases {
+			allFlakes := len(testCase.Failures) > 0 && len(testCase.Errors) == 0 && len(testCase.Skipped) == 0
+			for _, failure := range testCase.Failures {
+				if failure.Type == "Flake" {
+					failure.Type = "Failure"
+				} else {
+					allFlakes = false
+				}
 			}
-			if tc.SkipMessage != nil {
-				testSuite.NumSkipped++
+			if allFlakes {
+				testSuite.TestCases = append(testSuite.TestCases, &junit.TestCase{
+					Name:      testCase.Name,
+					Classname: testCase.Classname,
+					Time:      testCase.Time,
+				})
 			}
 		}
 
-		testSuite.Duration = time.Since(start).Seconds()
-
 		if framework.TestContext.ReportDir != "" {
-			timeSuffix := fmt.Sprintf("_%s", time.Now().UTC().Format("20060102-150405"))
-
-			fname := filepath.Join(framework.TestContext.ReportDir, fmt.Sprintf("junit_%s_%s.xml", packageName, timeSuffix))
+			fname := filepath.Join(framework.TestContext.ReportDir, fmt.Sprintf("junit_%s_%d.xml", testSuite.Package, time.Now().Unix()))
 			f, err := os.Create(fname)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: Failed to write file %v: %v\n", fname, err)
 				return
 			}
 			defer f.Close()
 			xml.NewEncoder(f).Encode(testSuite)
-
-			if err := riskanalysis.WriteJobRunTestFailureSummary(framework.TestContext.ReportDir, timeSuffix, testSuite); err != nil {
-				fmt.Fprintf(os.Stderr, "error: Failed to write file %v: %v\n", fname, err)
-				return
-			}
 		}
 	}()
 	cm.Do()
@@ -168,9 +170,8 @@ type chaosMonkeyAdapter struct {
 	TestData
 
 	test            upgrades.Test
-	testName        string
-	className       string
-	testSuiteReport *junitapi.JUnitTestSuite
+	testReport      *junit.TestCase
+	testSuiteReport *junit.TestSuite
 	framework       *framework.Framework
 }
 
@@ -182,16 +183,11 @@ func (cma *chaosMonkeyAdapter) Test(sem *chaosmonkey.Semaphore) {
 			sem.Ready()
 		})
 	}
-	defer finalizeTest(start, cma.testName, cma.className, cma.testSuiteReport, cma.framework)
+	defer finalizeTest(start, cma.testReport, cma.testSuiteReport, cma.framework)
 	defer ready()
 	if skippable, ok := cma.test.(upgrades.Skippable); ok && skippable.Skip(cma.UpgradeContext) {
 		g.By("skipping test " + cma.test.Name())
-		testResult := &junitapi.JUnitTestCase{
-			Name:      cma.testName,
-			Classname: cma.className,
-		}
-		testResult.SkipMessage = &junitapi.SkipMessage{Message: "skipping test " + cma.test.Name()}
-		cma.testSuiteReport.TestCases = append(cma.testSuiteReport.TestCases, testResult)
+		cma.testReport.Skipped = "skipping test " + cma.test.Name()
 		return
 	}
 	cma.framework.BeforeEach()
@@ -201,54 +197,41 @@ func (cma *chaosMonkeyAdapter) Test(sem *chaosmonkey.Semaphore) {
 	cma.test.Test(cma.framework, sem.StopCh, cma.UpgradeType)
 }
 
-func finalizeTest(start time.Time, testName, className string, ts *junitapi.JUnitTestSuite, f *framework.Framework) {
+func finalizeTest(start time.Time, tc *junit.TestCase, ts *junit.TestSuite, f *framework.Framework) {
 	now := time.Now().UTC()
-	testDuration := now.Sub(start).Seconds()
-
-	// r is the primary means we are informed of test results here. We expect ginko to panic on any failure so
-	// if r is nil, we passed. If not, we start checking if this was a flake or fail below.
+	tc.Time = now.Sub(start).Seconds()
 	r := recover()
 
 	// if the framework contains additional test results, add them to the parent suite or write them to disk
 	for _, summary := range f.TestSummaries {
-
 		if test, ok := summary.(additionalTest); ok {
-			tc := &junitapi.JUnitTestCase{
-				Name:      test.Name,
-				Classname: className,
-				Duration:  test.Duration.Seconds(),
+			testCase := &junit.TestCase{
+				Name: test.Name,
+				Time: test.Duration.Seconds(),
 			}
 			if len(test.Failure) > 0 {
-				tc.FailureOutput = &junitapi.FailureOutput{Message: test.Failure}
+				testCase.Failures = append(testCase.Failures, &junit.Failure{
+					Message: test.Failure,
+					Value:   test.Failure,
+				})
 			}
-			ts.TestCases = append(ts.TestCases, tc)
+			ts.TestCases = append(ts.TestCases, testCase)
 			continue
 		}
 
-		// TODO: this is writing out Flake_[testname]_[timestamp].json files with content that is just: {"type":"Flake"}
-		// Find out if these are used by anything, but it looks like we should find a way to silence TestSummaries
-		// of type flakeSummary.
-		filePath := filepath.Join(framework.TestContext.ReportDir, fmt.Sprintf("%s_%s_%s.json", summary.SummaryKind(), filesystemSafeName(testName), now.Format(time.RFC3339)))
+		filePath := filepath.Join(framework.TestContext.ReportDir, fmt.Sprintf("%s_%s_%s.json", summary.SummaryKind(), filesystemSafeName(tc.Name), now.Format(time.RFC3339)))
 		if err := ioutil.WriteFile(filePath, []byte(summary.PrintJSON()), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "error: Failed to write file %v with test data: %v\n", filePath, err)
 		}
 	}
 
 	if r == nil {
-		// Test can be considered successful, but may have flaked, see below:
-		ts.TestCases = append(ts.TestCases, &junitapi.JUnitTestCase{
-			Name:      testName,
-			Classname: className,
-			Duration:  testDuration,
-		})
 		if f != nil {
-			if message, hasFlake := hasFrameworkFlake(f); hasFlake {
-				// Add another test case with the failure, this is a flake as we already added the success testcase above:
-				ts.TestCases = append(ts.TestCases, &junitapi.JUnitTestCase{
-					Name:          testName,
-					Classname:     className,
-					Duration:      testDuration,
-					FailureOutput: &junitapi.FailureOutput{Output: message},
+			if message, ok := hasFrameworkFlake(f); ok {
+				tc.Failures = append(tc.Failures, &junit.Failure{
+					Type:    "Flake",
+					Message: message,
+					Value:   message,
 				})
 			}
 		}
@@ -256,24 +239,29 @@ func finalizeTest(start time.Time, testName, className string, ts *junitapi.JUni
 	}
 	framework.Logf("recover: %v", r)
 
-	testResult := &junitapi.JUnitTestCase{
-		Name:      testName,
-		Classname: className,
-		Duration:  testDuration,
-	}
 	switch r := r.(type) {
 	case ginkgowrapper.FailurePanic:
-		testResult.FailureOutput = &junitapi.FailureOutput{Message: fmt.Sprintf("%s\n\n%s", r.Message, r.FullStackTrace)}
+		tc.Failures = []*junit.Failure{
+			{
+				Message: r.Message,
+				Type:    "Failure",
+				Value:   fmt.Sprintf("%s\n\n%s", r.Message, r.FullStackTrace),
+			},
+		}
 	case e2eskipper.SkipPanic:
-		testResult.SkipMessage = &junitapi.SkipMessage{Message: fmt.Sprintf("%s:%d %q", r.Filename, r.Line, r.Message)}
+		tc.Skipped = fmt.Sprintf("%s:%d %q", r.Filename, r.Line, r.Message)
 	default:
-		testResult.FailureOutput = &junitapi.FailureOutput{Message: fmt.Sprintf("%v\n\n%s", r, debug.Stack())}
+		tc.Errors = []*junit.Error{
+			{
+				Message: "Ginkgo panic encountered. See CDATA for details.",
+				Type:    "Panic",
+				Value:   fmt.Sprintf("%v\n\n%s", r, debug.Stack()),
+			},
+		}
 	}
-	ts.TestCases = append(ts.TestCases, testResult)
-
 	// if we have a panic but it hasn't been recorded by ginkgo, panic now
 	if !g.CurrentSpecReport().Failed() {
-		framework.Logf("%q: panic: %v", testName, r)
+		framework.Logf("%q: panic: %v", tc.Name, r)
 		func() {
 			defer g.GinkgoRecover()
 			panic(r)
