@@ -10,6 +10,9 @@ import (
 	"time"
 
 	"github.com/openshift/origin/pkg/riskanalysis"
+	"github.com/sirupsen/logrus"
+
+	"github.com/openshift/origin/pkg/riskanalysis"
 
 	"github.com/openshift/origin/pkg/monitortestframework"
 
@@ -20,8 +23,9 @@ import (
 	"github.com/openshift/origin/pkg/test"
 	"github.com/openshift/origin/pkg/test/ginkgo/junitapi"
 
-	"github.com/openshift/origin/pkg/monitor/monitorapi"
 	"k8s.io/client-go/rest"
+
+	"github.com/openshift/origin/pkg/monitor/monitorapi"
 )
 
 type Monitor struct {
@@ -149,6 +153,12 @@ func (m *Monitor) Stop(ctx context.Context) (ResultState, error) {
 	}
 	onlyFailingTests := failedTestNames.Difference(successfulTestNames)
 	if len(onlyFailingTests) > 0 {
+<<<<<<< HEAD
+=======
+		for _, tn := range onlyFailingTests.UnsortedList() {
+			logrus.Errorf("returning failed state from Stop() due to failed test: %s", tn)
+		}
+>>>>>>> 753ab499de (log)
 		resultState = Failed
 	}
 
