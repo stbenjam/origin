@@ -26,7 +26,7 @@ type externalBinaryStruct struct {
 var externalBinaries = []externalBinaryStruct{
 	{
 		imageTag:   "hyperkube",
-		binaryPath: "/usr/bin/k8s-tests-ext",
+		binaryPath: "/usr/bin/k8s-tests-ext.gz",
 	},
 }
 
@@ -147,35 +147,44 @@ type TestBinary struct {
 	logger *log.Logger
 }
 
-// TestsForSuite returns which tests this binary advertises.
+// TestsForSuite reads JSONL output from the binary and returns the parsed tests.
 func (b *TestBinary) TestsForSuite(ctx context.Context) (ExtensionTestSpecs, error) {
 	var tests ExtensionTestSpecs
 
-	command := exec.Command(b.path, "list")
+	command := exec.Command(b.path, "list", "--output", "jsonl")
 	testList, err := runWithTimeout(ctx, command, 1*time.Minute)
 	if err != nil {
 		return nil, fmt.Errorf("failed running '%s list': %w", b.path, err)
 	}
+
 	buf := bytes.NewBuffer(testList)
 	for {
 		line, err := buf.ReadString('\n')
 		if err == io.EOF {
 			break
 		}
-		if !strings.HasPrefix(line, "[{") {
+		if err != nil {
+			return nil, fmt.Errorf("error reading output: %w", err)
+		}
+
+		// Trim whitespace and check if the line starts with '{'
+		line = strings.TrimSpace(line)
+		if !strings.HasPrefix(line, "{") {
 			continue
 		}
 
-		var extensionTestSpecs ExtensionTestSpecs
-		err = json.Unmarshal([]byte(line), &extensionTestSpecs)
+		// Parse JSONL line into a new ExtensionTestSpec instance
+		testSpec := new(ExtensionTestSpec)
+		err = json.Unmarshal([]byte(line), testSpec)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("binary returned JSON-looking liket that didn't unmarshal: %q", line)
 		}
-		for i := range extensionTestSpecs {
-			extensionTestSpecs[i].Binary = b.path
-		}
-		tests = append(tests, extensionTestSpecs...)
+
+		// Annotate the test spec with the binary path
+		testSpec.Binary = b.path
+		tests = append(tests, testSpec)
 	}
+
 	return tests, nil
 }
 

@@ -104,13 +104,15 @@ func runImageExtract(image, src, dst string, dockerConfigJsonPath string, logger
 	var out []byte
 	maxRetries := 6
 	startTime := time.Now()
-	logger.Printf("Run image extract for release image %q and src %q at %v", image, src, startTime)
+	logger.Printf("Started image extract for release image %q and src %q", image, src)
 	for i := 1; i <= maxRetries; i++ {
 		args := []string{"--kubeconfig=" + util.KubeConfigPath(), "image", "extract", image, fmt.Sprintf("--path=%s:%s", src, dst), "--confirm"}
 		if len(dockerConfigJsonPath) > 0 {
 			args = append(args, fmt.Sprintf("--registry-config=%s", dockerConfigJsonPath))
 		}
 		cmd := exec.Command("oc", args...)
+		fmt.Println(cmd.String())
+
 		out, err = cmd.CombinedOutput()
 		if err != nil {
 			// Allow retries for up to one minute. The openshift internal registry
@@ -120,7 +122,7 @@ func runImageExtract(image, src, dst string, dockerConfigJsonPath string, logger
 			continue
 		}
 		extractionTime := time.Since(startTime)
-		logger.Printf("Run image extract for release image %q at %v", image, extractionTime)
+		logger.Printf("Completed image extract for release image %q and src %q in %v", image, src, extractionTime)
 		return nil
 	}
 	return fmt.Errorf("error during image extract: %w (%v)", err, string(out))

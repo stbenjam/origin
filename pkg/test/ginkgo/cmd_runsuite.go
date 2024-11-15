@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/openshift/origin/vendor/github.com/onsi/ginkgo/v2"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -136,8 +137,8 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 	fmt.Fprintf(o.Out, "Found %d tests for in openshift-tests binary for suite %q\n", len(tests), suite.Name)
 
 	var fallbackSyntheticTestResult []*junitapi.JUnitTestCase
-	var externalTestCases []*testCase
-	extractLogger := log.New(os.Stdout, "extbin", log.LstdFlags|log.Lmicroseconds)
+	var externalTestSpecs externalbinary.ExtensionTestSpecs
+	extractLogger := log.New(os.Stdout, "", log.LstdFlags|log.Lmicroseconds)
 	if len(os.Getenv("OPENSHIFT_SKIP_EXTERNAL_TESTS")) == 0 {
 		externalBinaries, err := externalbinary.ExtractAllTestBinaries(extractLogger, 10)
 		if err != nil {
@@ -148,10 +149,13 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 		if err != nil {
 			return err
 		}
-		externalTestCases = extensionTestSpecsToOriginTestCases(externalTestSpecs)
+		fmt.Printf("Discovered a total of %v external tests")
 
 		var filteredTests []*testCase
 		for _, test := range tests {
+			//
+			// TODO: remove me -- we should enforce kube tests only coming from the external binary
+			//
 			// tests contains all the tests "registered" in openshift-tests binary,
 			// this also includes vendored k8s tests, since this path assumes we're
 			// using external binary to run these tests we need to remove them
@@ -162,9 +166,8 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 				filteredTests = append(filteredTests, test)
 			}
 		}
-		tests = append(filteredTests, externalTestCases...)
-		fmt.Printf("Discovered a total of %v external tests and will run a total of %v\n", len(externalTestCases),
-			len(tests))
+		fmt.Printf("Discovered a total of %v internal tests and will run a total of %v after filtering\n", len(tests),
+			len(filteredTests))
 	} else {
 		fmt.Fprintf(o.Out, "Using built-in tests only due to OPENSHIFT_SKIP_EXTERNAL_TESTS being set\n")
 	}
