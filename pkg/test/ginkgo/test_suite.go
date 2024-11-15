@@ -53,7 +53,7 @@ func extensionTestSpecsToOriginTestCases(specs externalbinary.ExtensionTestSpecs
 	var tests []*testCase
 	for _, spec := range specs {
 		tests = append(tests, &testCase{
-			name:       spec.Name + spec.Labels,
+			name:       spec.Name,
 			rawName:    spec.Name,
 			binaryName: spec.Binary,
 		})

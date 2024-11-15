@@ -26,7 +26,7 @@ type externalBinaryStruct struct {
 var externalBinaries = []externalBinaryStruct{
 	{
 		imageTag:   "hyperkube",
-		binaryPath: "/usr/bin/k8s-tests",
+		binaryPath: "/usr/bin/k8s-tests-ext",
 	},
 }
 
