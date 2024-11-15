@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+	"github.com/openshift/origin/test/extended/util"
 )
 
 type externalBinaryStruct struct {
@@ -26,7 +28,7 @@ type externalBinaryStruct struct {
 var externalBinaries = []externalBinaryStruct{
 	{
 		imageTag:   "hyperkube",
-		binaryPath: "/usr/bin/k8s-tests-ext",
+		binaryPath: "/usr/bin/k8s-tests",
 	},
 }
 
@@ -35,7 +37,18 @@ func ExtractAllTestBinaries(logger *log.Logger, parallelism int) (TestBinaries, 
 		return nil, errors.New("parallelism must be greater than zero")
 	}
 
-	externalBinaryProvider, err := NewCachedExternalBinaryProvider(logger)
+	releaseImage, err := determineReleasePayloadImage(logger)
+	if err != nil {
+		return nil, errors.WithMessage(err, "couldn't determine release image")
+	}
+
+	oc := util.NewCLIWithoutNamespace("default")
+	registryAuthfilePath, err := getRegistryAuthFilePath(logger, oc)
+	if err != nil {
+		return nil, errors.WithMessage(err, "couldn't get registry auth file path")
+	}
+
+	externalBinaryProvider, err := NewCachedExternalBinaryProvider(logger, releaseImage, registryAuthfilePath)
 	if err != nil {
 		return nil, errors.WithMessage(err, "could not create external binary provider")
 	}
