@@ -722,7 +722,7 @@ var _ = g.Describe("[sig-instrumentation] Prometheus [apigroup:image.openshift.i
 			})
 		})
 
-		g.It("shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io]", func() {
+		g.It("shouldn't report any unexpected alerts in firing state [Early][apigroup:config.openshift.io]", func() {
 			// Copy so we can expand:
 			allowedAlertNames := make([]string, len(allowedalerts2.AllowedAlertNames))
 			copy(allowedAlertNames, allowedalerts2.AllowedAlertNames)
