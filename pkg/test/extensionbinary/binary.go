@@ -1,4 +1,4 @@
-package externalbinary
+package extensionbinary
 
 import (
 	"bytes"
@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/origin/test/extended/util"
 	"github.com/pkg/errors"
 	"io"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"log"
 	"os"
 	"os/exec"
@@ -18,14 +19,14 @@ import (
 	"time"
 )
 
-type externalBinaryStruct struct {
+type extensionBinaryStruct struct {
 	// The payload image tag in which an external binary path can be found
 	imageTag string
 	// The binary path to extract from the image
 	binaryPath string
 }
 
-var externalBinaries = []externalBinaryStruct{
+var extensionBinaries = []extensionBinaryStruct{
 	{
 		imageTag:   "hyperkube",
 		binaryPath: "/usr/bin/k8s-tests-ext.gz",
@@ -76,7 +77,7 @@ func (b *TestBinary) ListTests(ctx context.Context) (ExtensionTestSpecs, error) 
 
 func (b *TestBinary) RunTests(ctx context.Context, env []string, names ...string) []*ExtensionTestResult {
 	var results []*ExtensionTestResult
-	//unseenTests := sets.New[string](names...)
+	unseenTests := sets.New[string](names...)
 	binName := filepath.Base(b.path)
 
 	// Build command
@@ -118,17 +119,23 @@ func (b *TestBinary) RunTests(ctx context.Context, env []string, names ...string
 		if err != nil {
 			panic(fmt.Sprintf("test binary %q returned unmarshallable result", binName))
 		}
-		/*if !unseenTests.Has(result.Name) {
-			panic(fmt.Sprintf("test binary %q returned unexpected result: %s", binName, result.Name))
+		if !unseenTests.Has(result.Name) {
+			result.Result = ResultFailed
+			result.Error = fmt.Sprintf("test binary %q returned unexpected result: %s", binName, result.Name)
 		}
 		unseenTests.Delete(result.Name)
-		*/
 		results = append(results, result)
 	}
 
-	/*if unseenTests.Len() > 0 {
-		panic(fmt.Sprintf("test binary %q did not return results for some tests: %s", binName, strings.Join(unseenTests.UnsortedList(), ",")))
-	}*/
+	if unseenTests.Len() > 0 {
+		for _, test := range unseenTests.UnsortedList() {
+			results = append(results, &ExtensionTestResult{
+				Name:   test,
+				Result: ResultFailed,
+				Error:  fmt.Sprintf("test binary %q did not return a result for this test", binName),
+			})
+		}
+	}
 
 	return results
 }
@@ -160,14 +167,14 @@ func ExtractAllTestBinaries(ctx context.Context, logger *log.Logger, parallelism
 		binaries []*TestBinary
 		mu       sync.Mutex
 		wg       sync.WaitGroup
-		errCh    = make(chan error, len(externalBinaries))
-		jobCh    = make(chan externalBinaryStruct)
+		errCh    = make(chan error, len(extensionBinaries))
+		jobCh    = make(chan extensionBinaryStruct)
 	)
 
 	// Producer: sends jobs to the jobCh channel
 	go func() {
 		defer close(jobCh)
-		for _, b := range externalBinaries {
+		for _, b := range extensionBinaries {
 			select {
 			case <-ctx.Done():
 				return // Exit if context is cancelled

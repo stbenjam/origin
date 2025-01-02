@@ -1,4 +1,4 @@
-package externalbinary
+package extensionbinary
 
 import (
 	"compress/gzip"

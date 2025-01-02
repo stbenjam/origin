@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/origin/pkg/test/externalbinary"
+	"github.com/openshift/origin/pkg/test/extensionbinary"
 	"io"
 	"os"
 	"os/exec"
@@ -307,16 +307,16 @@ func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase
 			panic("unexpected result")
 		}
 		switch results[0].Result {
-		case externalbinary.ResultFailed:
+		case extensionbinary.ResultFailed:
 			ret.testState = TestFailed
 			ret.testOutputBytes = []byte(results[0].Error) // FIXME
-		case externalbinary.ResultPassed:
+		case extensionbinary.ResultPassed:
 			ret.testState = TestSucceeded
-		case externalbinary.ResultSkipped:
+		case extensionbinary.ResultSkipped:
 			ret.testState = TestSkipped
 		}
-		ret.start = externalbinary.Time(results[0].StartTime)
-		ret.end = externalbinary.Time(results[0].EndTime)
+		ret.start = extensionbinary.Time(results[0].StartTime)
+		ret.end = extensionbinary.Time(results[0].EndTime)
 	}
 
 	testName := test.rawName

@@ -11,7 +11,7 @@ import (
 
 	k8sgenerated "k8s.io/kubernetes/openshift-hack/e2e/annotate/generated"
 
-	"github.com/openshift/origin/pkg/test/externalbinary"
+	"github.com/openshift/origin/pkg/test/extensionbinary"
 	origingenerated "github.com/openshift/origin/test/extended/util/annotate/generated"
 )
 
@@ -49,7 +49,7 @@ func testsForSuite() ([]*testCase, error) {
 
 var re = regexp.MustCompile(`.*\[Timeout:(.[^\]]*)\]`)
 
-func externalBinaryTestsToOriginTestCases(specs externalbinary.ExtensionTestSpecs) []*testCase {
+func externalBinaryTestsToOriginTestCases(specs extensionbinary.ExtensionTestSpecs) []*testCase {
 	var tests []*testCase
 	for _, spec := range specs {
 		tests = append(tests, &testCase{
@@ -91,7 +91,7 @@ type testCase struct {
 	// binaryName is the name of the binary to execute for internal tests
 	binaryName string
 	// binary is the reference when using an external binary
-	binary *externalbinary.TestBinary
+	binary *extensionbinary.TestBinary
 
 	spec      types.TestSpec
 	locations []types.CodeLocation

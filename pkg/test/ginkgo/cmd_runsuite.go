@@ -31,7 +31,7 @@ import (
 	monitorserialization "github.com/openshift/origin/pkg/monitor/serialization"
 	"github.com/openshift/origin/pkg/monitortestframework"
 	"github.com/openshift/origin/pkg/riskanalysis"
-	"github.com/openshift/origin/pkg/test/externalbinary"
+	"github.com/openshift/origin/pkg/test/extensionbinary"
 	"github.com/openshift/origin/pkg/test/ginkgo/junitapi"
 )
 
@@ -142,7 +142,7 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 		// Extract all test binaries
 		extractionContext, extractionContextCancel := context.WithTimeout(context.Background(), 30*time.Minute)
 		defer extractionContextCancel()
-		cleanUpFn, externalBinaries, err := externalbinary.ExtractAllTestBinaries(extractionContext, extractLogger, 10)
+		cleanUpFn, externalBinaries, err := extensionbinary.ExtractAllTestBinaries(extractionContext, extractLogger, 10)
 		if err != nil {
 			return err
 		}

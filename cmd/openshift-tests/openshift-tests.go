@@ -3,11 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/openshift/origin/pkg/version"
 	"math/rand"
 	"os"
 	"os/exec"
 	"syscall"
 	"time"
+
+	ote "github.com/openshift-eng/openshift-tests-extension/pkg/extension"
+	oteTests "github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
+	oteGinkgo "github.com/openshift-eng/openshift-tests-extension/pkg/ginkgo"
+	oteVersion "github.com/openshift-eng/openshift-tests-extension/pkg/version"
 
 	"github.com/openshift/library-go/pkg/serviceability"
 	"github.com/openshift/origin/pkg/cmd"
@@ -60,6 +66,17 @@ func main() {
 
 	pflag.CommandLine.SetNormalizeFunc(utilflag.WordSepNormalizeFunc)
 	//pflag.CommandLine.AddGoFlagSet(goflag.CommandLine)
+
+	// Initialize openshift-tests-extension interface
+	openshiftTestsVersion := version.Get()
+	oteVersion.GitTreeState = openshiftTestsVersion.GitTreeState
+	oteVersion.CommitFromGit = openshiftTestsVersion.GitCommit
+	oteVersion.BuildDate = openshiftTestsVersion.BuildDate
+
+	// Create our registry of openshift-tests extensions
+	extensionRegistry := ote.NewRegistry()
+	originExtension := ote.NewExtension("openshift", "payload", "origin")
+	extensionRegistry.Register(originExtension)
 
 	root := &cobra.Command{
 		Long: templates.LongDesc(`This command verifies behavior of an OpenShift cluster by running remote tests against

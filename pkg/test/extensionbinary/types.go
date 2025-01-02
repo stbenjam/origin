@@ -1,4 +1,4 @@
-package externalbinary
+package extensionbinary
 
 import (
 	"k8s.io/apimachinery/pkg/util/sets"
