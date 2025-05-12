@@ -18,7 +18,10 @@ import (
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
+	"github.com/openshift-eng/openshift-tests-extension/pkg/extension"
+	"github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
 	configv1 "github.com/openshift/api/config/v1"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"golang.org/x/mod/semver"
@@ -66,6 +69,8 @@ type GinkgoRunSuiteOptions struct {
 
 	// ShardID is the 1-based index of the shard this instance is responsible for running.
 	ShardID int
+
+	Extension *extension.Extension
 
 	// SyntheticEventTests allows the caller to translate events or outside
 	// context into a failure.
@@ -147,7 +152,7 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 	upgrade bool) error {
 	ctx := context.Background()
 
-	tests, err := testsForSuite()
+	tests, err := extensionSpecToOriginTestCases(nil, o.Extension.GetSpecs())
 	if err != nil {
 		return fmt.Errorf("failed reading origin test suites: %w", err)
 	}
@@ -161,7 +166,6 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 	logrus.WithField("suite", suite.Name).Infof("Found %d internal tests in openshift-tests binary", len(tests))
 
 	var fallbackSyntheticTestResult []*junitapi.JUnitTestCase
-	var externalTestCases []*testCase
 	if len(os.Getenv("OPENSHIFT_SKIP_EXTERNAL_TESTS")) == 0 {
 		// Extract all test binaries
 		extractionContext, extractionContextCancel := context.WithTimeout(context.Background(), 30*time.Minute)
@@ -202,12 +206,22 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 		if err != nil {
 			return err
 		}
-		externalTestCases = externalBinaryTestsToOriginTestCases(externalTestSpecs)
+
+		var externalTestCases []*testCase
+		for binary, specs := range externalTestSpecs {
+			tcs, err := extensionSpecToOriginTestCases(binary, specs)
+			if err != nil {
+				return errors.WithMessage(err, "failed to convert specs")
+			}
+
+			externalTestCases = append(externalTestCases, tcs...)
+
+		}
 
 		var filteredTests []*testCase
 		for _, test := range tests {
 			// tests contains all the tests "registered" in openshift-tests binary,
-			// this also includes vendored k8s tests, since this path assumes we're
+			// this also includes vendored k8s tests, since this path assumes we'timeoutRe
 			// using external binary to run these tests we need to remove them
 			// from the final lists, which contains:
 			// 1. origin tests, only
@@ -226,11 +240,12 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, junitSuiteName string, mon
 	// Temporarily check for the presence of the [Skipped:xyz] annotation in the test names, once this synthetic test
 	// begins to pass we can remove the annotation logic
 	var annotatedSkipped []string
-	for _, t := range externalTestCases {
+	for _, t := range tests {
 		if strings.Contains(t.name, "[Skipped") {
 			annotatedSkipped = append(annotatedSkipped, t.name)
 		}
 	}
+
 	var skippedAnnotationSyntheticTestResults []*junitapi.JUnitTestCase
 	skippedAnnotationSyntheticTestResult := junitapi.JUnitTestCase{
 		Name: "[sig-trt] Skipped annotations present",
@@ -684,7 +699,7 @@ func writeExtensionTestResults(tests []*testCase, dir, filePrefix, fileSuffix st
 	}
 
 	// Collect results into a slice
-	var results extensions.ExtensionTestResults
+	var results extensiontests.ExtensionTestResults
 	for _, test := range tests {
 		if test.extensionTestResult != nil {
 			results = append(results, test.extensionTestResult)
@@ -732,7 +747,7 @@ func (o *GinkgoRunSuiteOptions) filterOutRebaseTests(restConfig *rest.Config, te
 		return tests, nil
 	}
 
-	// Below list should only be filled in when we're trying to land k8s rebase.
+	// Below list should only be filled in when we'timeoutRe trying to land k8s rebase.
 	// Don't pile them up!
 	exclusions := []string{
 		// affected by the available controller split https://github.com/kubernetes/kubernetes/pull/126149

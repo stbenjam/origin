@@ -13,7 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/openshift/origin/pkg/test/extensions"
+	"github.com/openshift-eng/openshift-tests-extension/pkg/dbtime"
+	et "github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
 
 	"k8s.io/kubernetes/test/e2e/framework"
 
@@ -25,7 +26,7 @@ type testSuiteRunner interface {
 	RunOneTest(ctx context.Context, test *testCase)
 }
 
-// testRunner contains all the content required to run a test.  It must be threadsafe and must be re-useable
+// testRunner contains all the content required to run a test.  It must be threadsafe and must be timeoutRe-useable
 // across multiple parallel RunOneTest invocations.
 type testSuiteRunnerImpl struct {
 	commandContext        *commandContext
@@ -144,7 +145,7 @@ type testRunResult struct {
 	end                 time.Time
 	testState           TestState
 	testOutputBytes     []byte
-	extensionTestResult *extensions.ExtensionTestResult
+	extensionTestResult *et.ExtensionTestResult
 }
 
 func (r testRunResult) duration() time.Duration {
@@ -312,16 +313,17 @@ func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase
 			fmt.Fprintf(os.Stderr, "warning: expected 1 result from external binary; received %d", len(results))
 		}
 		switch results[0].Result {
-		case extensions.ResultFailed:
+		case et.ResultFailed:
 			ret.testState = TestFailed
 			ret.testOutputBytes = []byte(fmt.Sprintf("%s\n%s", results[0].Output, results[0].Error))
-		case extensions.ResultPassed:
+		case et.ResultPassed:
 			ret.testState = TestSucceeded
-		case extensions.ResultSkipped:
+		case et.ResultSkipped:
 			ret.testState = TestSkipped
 		}
-		ret.start = extensions.Time(results[0].StartTime)
-		ret.end = extensions.Time(results[0].EndTime)
+		ret.start = dbTime(results[0].StartTime)
+
+		ret.end = dbTime(results[0].EndTime)
 		ret.extensionTestResult = results[0]
 		return ret
 	}
@@ -428,4 +430,11 @@ func runWithTimeout(ctx context.Context, c *exec.Cmd, timeout time.Duration) ([]
 		}()
 	}
 	return c.CombinedOutput()
+}
+
+func dbTime(t *dbtime.DBTime) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return time.Time(*t)
 }

@@ -3,22 +3,27 @@ package ginkgo
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"os"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/errors"
+	k8sgenerated "k8s.io/kubernetes/openshift-hack/e2e/annotate/generated"
+
 	"github.com/openshift/origin/pkg/clioptions/clusterinfo"
+	origingenerated "github.com/openshift/origin/test/extended/util/annotate/generated"
 
 	"github.com/openshift/origin/pkg/monitortestframework"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/ginkgo/v2/types"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+
 	"github.com/openshift/origin/pkg/defaultmonitortests"
 	"github.com/openshift/origin/pkg/monitor"
 	"github.com/openshift/origin/pkg/test/ginkgo/result"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 type ExitError struct {
@@ -192,4 +197,55 @@ func lastFilenameSegment(filename string) string {
 		return parts[len(parts)-1]
 	}
 	return filename
+}
+
+func testsForSuite() ([]*testCase, error) {
+	var tests []*testCase
+	var errs []error
+
+	// Don't build the tree multiple times, it results in multiple initing of tests
+	if !ginkgo.GetSuite().InPhaseBuildTree() {
+		ginkgo.GetSuite().BuildTree()
+	}
+
+	ginkgo.GetSuite().WalkTests(func(name string, spec types.TestSpec) {
+		// we need to ensure the default path always annotates both
+		// origin and k8s tests accordingly, since each of these
+		// currently have their own annotations which are not
+		// merged anywhere else but applied here
+		if append, ok := origingenerated.Annotations[name]; ok {
+			spec.AppendText(append)
+		}
+		if append, ok := k8sgenerated.Annotations[name]; ok {
+			spec.AppendText(append)
+		}
+		tc, err := newTestCaseFromGinkgoSpec(spec)
+		if err != nil {
+			errs = append(errs, err)
+		}
+		tests = append(tests, tc)
+	})
+	if len(errs) > 0 {
+		return nil, errors.NewAggregate(errs)
+	}
+	return tests, nil
+}
+
+func newTestCaseFromGinkgoSpec(spec types.TestSpec) (*testCase, error) {
+	name := spec.Text()
+	tc := &testCase{
+		name:      name,
+		locations: spec.CodeLocations(),
+		spec:      spec,
+	}
+
+	if match := timeoutRe.FindStringSubmatch(name); match != nil {
+		testTimeOut, err := time.ParseDuration(match[1])
+		if err != nil {
+			return nil, err
+		}
+		tc.testTimeout = testTimeOut
+	}
+
+	return tc, nil
 }

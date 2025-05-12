@@ -74,7 +74,7 @@ func runTestsUntilChannelEmpty(ctx context.Context, remainingParallelTests chan 
 			return
 
 		case test, ok := <-remainingParallelTests:
-			if !ok { // channel closed, then we're done
+			if !ok { // channel closed, then we'timeoutRe done
 				return
 			}
 			// if the context is finished, simply return

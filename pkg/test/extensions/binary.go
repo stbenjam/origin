@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	et "github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/mod/semver"
@@ -96,8 +97,8 @@ func (b *TestBinary) Info(ctx context.Context) (*ExtensionInfo, error) {
 
 // ListTests takes a list of EnvironmentFlags to pass to the command so it can determine for itself which tests are relevant.
 // returns which tests this binary advertises.
-func (b *TestBinary) ListTests(ctx context.Context, envFlags EnvironmentFlags) (ExtensionTestSpecs, error) {
-	var tests ExtensionTestSpecs
+func (b *TestBinary) ListTests(ctx context.Context, envFlags EnvironmentFlags) (et.ExtensionTestSpecs, error) {
+	var tests et.ExtensionTestSpecs
 	start := time.Now()
 	binName := filepath.Base(b.binaryPath)
 
@@ -122,12 +123,11 @@ func (b *TestBinary) ListTests(ctx context.Context, envFlags EnvironmentFlags) (
 			continue
 		}
 
-		extensionTestSpec := new(ExtensionTestSpec)
+		extensionTestSpec := new(et.ExtensionTestSpec)
 		err = json.Unmarshal([]byte(line), extensionTestSpec)
 		if err != nil {
 			return nil, errors.Wrapf(err, "line: %s", line)
 		}
-		extensionTestSpec.Binary = b
 		tests = append(tests, extensionTestSpec)
 	}
 	binLogger.Infof("Listed %d tests in %v", len(tests), time.Since(start))
@@ -136,8 +136,8 @@ func (b *TestBinary) ListTests(ctx context.Context, envFlags EnvironmentFlags) (
 
 // RunTests executes the named tests and returns the results.
 func (b *TestBinary) RunTests(ctx context.Context, timeout time.Duration, env []string,
-	names ...string) []*ExtensionTestResult {
-	var results []*ExtensionTestResult
+	names ...string) []*et.ExtensionTestResult {
+	var results []*et.ExtensionTestResult
 	expectedTests := sets.New[string](names...)
 	binName := filepath.Base(b.binaryPath)
 
@@ -174,7 +174,7 @@ func (b *TestBinary) RunTests(ctx context.Context, timeout time.Duration, env []
 		if !strings.HasPrefix(line, "{") {
 			continue
 		}
-		result := new(ExtensionTestResult)
+		result := new(et.ExtensionTestResult)
 		err = json.Unmarshal([]byte(line), &result)
 		if err != nil {
 			panic(fmt.Sprintf("test binary %q returned unmarshallable result", binName))
@@ -187,7 +187,7 @@ func (b *TestBinary) RunTests(ctx context.Context, timeout time.Duration, env []
 		//  - we got a test result we didn't expect at all (maybe the external binary improperly
 		//    mutated the name, or otherwise did something weird)
 		if !expectedTests.Has(result.Name) {
-			result.Result = ResultFailed
+			result.Result = et.ResultFailed
 			result.Error = fmt.Sprintf("test binary %q returned unexpected result: %s", binName, result.Name)
 		}
 		expectedTests.Delete(result.Name)
@@ -197,9 +197,9 @@ func (b *TestBinary) RunTests(ctx context.Context, timeout time.Duration, env []
 	// If we end up with anything left in expected tests, generate failures for them because
 	// we didn't get results for them.
 	for _, expectedTest := range expectedTests.UnsortedList() {
-		results = append(results, &ExtensionTestResult{
+		results = append(results, &et.ExtensionTestResult{
 			Name:   expectedTest,
-			Result: ResultFailed,
+			Result: et.ResultFailed,
 			Output: string(testResult),
 			Error:  "external binary did not produce a result for this test",
 		})
@@ -508,14 +508,15 @@ func (binaries TestBinaries) ListImages(ctx context.Context, parallelism int) ([
 
 // ListTests extracts the tests from all TestBinaries using the specified parallelism,
 // and passes the provided EnvironmentFlags for proper filtering of results.
-func (binaries TestBinaries) ListTests(ctx context.Context, parallelism int, envFlags EnvironmentFlags) (ExtensionTestSpecs, error) {
+func (binaries TestBinaries) ListTests(ctx context.Context, parallelism int, envFlags EnvironmentFlags) (map[*TestBinary]et.ExtensionTestSpecs, error) {
 	var (
-		allTests ExtensionTestSpecs
-		mu       sync.Mutex
-		wg       sync.WaitGroup
-		errCh    = make(chan error, len(binaries))
-		jobCh    = make(chan *TestBinary)
+		mu    sync.Mutex
+		wg    sync.WaitGroup
+		errCh = make(chan error, len(binaries))
+		jobCh = make(chan *TestBinary)
 	)
+
+	allTests := make(map[*TestBinary]et.ExtensionTestSpecs)
 
 	// Producer: sends jobs to the jobCh channel
 	go func() {
@@ -547,7 +548,7 @@ func (binaries TestBinaries) ListTests(ctx context.Context, parallelism int, env
 						errCh <- err
 					}
 					mu.Lock()
-					allTests = append(allTests, tests...)
+					allTests[binary] = tests
 					mu.Unlock()
 				}
 			}

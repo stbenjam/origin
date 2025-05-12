@@ -192,7 +192,7 @@ func GetOpenshiftEtcdStorageData(namespace string) map[schema.GroupVersionResour
 // TODO fix for real GVK.
 var kindWhiteList = sets.NewString(
 	"ImageStreamTag",
-	"ImageTag",
+	"imageTag",
 	"UserIdentityMapping",
 	// these are now served using CRDs
 	"ClusterResourceQuota",

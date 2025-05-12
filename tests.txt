@@ -1,0 +1,1 @@
+"[sig-cli] oc explain should contain proper fields description for template.openshift.io [apigroup:template.openshift.io] [Suite:openshift/conformance/parallel]"

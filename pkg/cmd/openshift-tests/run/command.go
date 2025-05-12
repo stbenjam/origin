@@ -4,14 +4,16 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/openshift/origin/pkg/clioptions/imagesetup"
-	"github.com/openshift/origin/pkg/testsuites"
+	"github.com/openshift-eng/openshift-tests-extension/pkg/extension"
 	"github.com/spf13/cobra"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/kubectl/pkg/util/templates"
+
+	"github.com/openshift/origin/pkg/clioptions/imagesetup"
+	"github.com/openshift/origin/pkg/testsuites"
 )
 
-func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
+func NewRunCommand(streams genericclioptions.IOStreams, extension *extension.Extension) *cobra.Command {
 	f := NewRunSuiteFlags(streams, imagesetup.DefaultTestImageMirrorLocation, testsuites.StandardTestSuites())
 
 	cmd := &cobra.Command{
@@ -38,6 +40,8 @@ func NewRunCommand(streams genericclioptions.IOStreams) *cobra.Command {
 				fmt.Fprintf(f.IOStreams.ErrOut, "error converting to options: %v", err)
 				return err
 			}
+
+			o.GinkgoRunSuiteOptions.Extension = extension
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
