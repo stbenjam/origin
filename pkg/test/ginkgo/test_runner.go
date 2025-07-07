@@ -310,7 +310,6 @@ func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase
 	if test.binary == nil {
 		ret.testState = TestFailed
 		ret.testOutputBytes = []byte("test has no binary configured; this should not be possible")
-		return ret
 	}
 
 	timeout := c.timeout
@@ -322,6 +321,12 @@ func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase
 	if len(results) != 1 {
 		fmt.Fprintf(os.Stderr, "warning: expected 1 result from external binary; received %d", len(results))
 	}
+	if len(results) == 0 {
+		ret.testState = TestFailed
+		ret.testOutputBytes = []byte("no results from external binary")
+		return ret
+	}
+
 	switch results[0].Result {
 	case extensiontests.ResultFailed:
 		ret.testState = TestFailed
@@ -330,6 +335,7 @@ func (c *commandContext) RunTestInNewProcess(ctx context.Context, test *testCase
 		ret.testState = TestSucceeded
 	case extensiontests.ResultSkipped:
 		ret.testState = TestSkipped
+		ret.testOutputBytes = []byte(results[0].Output)
 	}
 	ret.start = extensions.Time(results[0].StartTime)
 	ret.end = extensions.Time(results[0].EndTime)

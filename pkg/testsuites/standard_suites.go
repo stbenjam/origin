@@ -421,6 +421,16 @@ var staticSuites = []ginkgo.TestSuite{
 		},
 		TestTimeout: 120 * time.Minute,
 	},
+	{
+		Name: "openshift/two-node",
+		Description: templates.LongDesc(`
+		This test suite runs tests to validate two-node.
+		`),
+		Qualifiers: []string{
+			withExcludedTestsFilter(`name.contains("[Suite:openshift/two-node") || name.contains("[FeatureGate:DualReplica]") || name.contains("[FeatureGate:HighlyAvailableArbiter]")`),
+		},
+		TestTimeout: 60 * time.Minute,
+	},
 }
 
 func withExcludedTestsFilter(baseExpr string) string {
