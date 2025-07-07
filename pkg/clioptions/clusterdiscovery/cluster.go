@@ -173,7 +173,7 @@ func discoverFeatureGates(configClient configclient.Interface, clusterVersion *c
 	slices.Sort(sortedDisabledGates)
 
 	logrus.WithField("featureGates", strings.Join(sortedDisabledGates, ", ")).
-		Debugf("Discovered %d disabled feature gates", disabled.Len())
+		Debugf("Discovered %d disabled feature gates", sortedDisabledGates)
 
 	return enabled, disabled, nil
 }
@@ -244,7 +244,7 @@ func DiscoverClusterState(clientConfig *rest.Config) (*ClusterState, error) {
 	// Discover available API groups
 	state.APIGroups, err = discoverAPIGroups(coreClient)
 	if err != nil {
-		return nil, err
+		return nil, errors.WithMessage(err, "encountered an error while discovering API groups")
 	}
 
 	// Discover feature gates

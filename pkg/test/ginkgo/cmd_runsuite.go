@@ -154,12 +154,12 @@ func shouldRetryTest(ctx context.Context, test *testCase, permittedRetryImageTag
 		return true
 	}
 
+	tlog := logrus.WithField("test", test.name)
+
 	// Get extension info to check if it's from a permitted image
 	info, err := test.binary.Info(ctx)
 	if err != nil {
-		logrus.
-			WithField("test", test.name).
-			WithError(err).
+		tlog.WithError(err).
 			Debug("Failed to get binary info, skipping retry")
 		return false
 	}
@@ -167,17 +167,13 @@ func shouldRetryTest(ctx context.Context, test *testCase, permittedRetryImageTag
 	// Check if the test's source image is in the permitted retry list
 	for _, permittedTag := range permittedRetryImageTags {
 		if strings.Contains(info.Source.SourceImage, permittedTag) {
-			logrus.
-				WithField("test", test.name).
-				WithField("image", info.Source.SourceImage).
+			tlog.WithField("image", info.Source.SourceImage).
 				Debug("Permitting retry")
 			return true
 		}
 	}
 
-	logrus.
-		WithField("test", test.name).
-		WithField("image", info.Source.SourceImage).
+	tlog.WithField("image", info.Source.SourceImage).
 		Debug("Test not eligible for retry based on image tag")
 	return false
 }

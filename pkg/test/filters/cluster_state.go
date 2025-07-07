@@ -97,6 +97,12 @@ func (f *ClusterStateFilter) ShouldApply() bool {
 	return f.config != nil
 }
 
+// Regular expressions for parsing test labels
+var (
+	apiGroupRegex    = regexp.MustCompile(`\[apigroup:([^]]*)\]`)
+	featureGateRegex = regexp.MustCompile(`\[OCPFeatureGate:([^]]*)\]`)
+)
+
 // matchTest implements the cluster-based test matching logic
 func (f *ClusterStateFilter) matchTest(name string) bool {
 	// Check skip conditions
@@ -167,9 +173,3 @@ func (f *ClusterStateFilter) matchTest(name string) bool {
 		(f.config.DisabledFeatureGates != nil && f.config.DisabledFeatureGates.Len() > 0)
 	return hasAnyFeatureGates
 }
-
-// Regular expressions for parsing test labels
-var (
-	apiGroupRegex    = regexp.MustCompile(`\[apigroup:([^]]*)\]`)
-	featureGateRegex = regexp.MustCompile(`\[OCPFeatureGate:([^]]*)\]`)
-)

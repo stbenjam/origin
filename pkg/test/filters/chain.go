@@ -49,15 +49,15 @@ func (p *TestFilterChain) Apply(ctx context.Context, tests extensions.ExtensionT
 	current := tests
 
 	for _, filter := range p.filters {
+		flog := p.logger.WithField("filter", filter.Name())
+
 		if !filter.ShouldApply() {
-			p.logger.WithField("filter", filter.Name()).
-				Debug("Skipping filter (not applicable)")
+			flog.Debug("Skipping filter (not applicable)")
 			continue
 		}
 
 		origCount := len(current)
-		p.logger.WithField("filter", filter.Name()).
-			WithField("before", origCount).
+		flog.WithField("before", origCount).
 			Infof("Applying filter: %s", filter.Name())
 
 		filtered, err := filter.Filter(ctx, current)
@@ -67,8 +67,7 @@ func (p *TestFilterChain) Apply(ctx context.Context, tests extensions.ExtensionT
 
 		filteredCount := len(filtered)
 		removedCount := origCount - filteredCount
-		p.logger.WithField("filter", filter.Name()).
-			WithField("before", origCount).
+		flog.WithField("before", origCount).
 			WithField("after", filteredCount).
 			WithField("removed", removedCount).
 			Infof("Filter %s completed - removed %d tests", filter.Name(), removedCount)
