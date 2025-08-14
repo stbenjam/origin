@@ -18,6 +18,21 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 )
 
+var _ = g.Describe("[sig-ci] informing test lifecycle", g.Label("Lifecycle:informing"), func() {
+	defer g.GinkgoRecover()
+
+	g.It("should always fail to test informing lifecycle handling", func() {
+		// This test is designed to always fail to verify that informing lifecycle
+		// tests do not contribute to overall suite failure.
+		// The test should have the special informing message injected into its output
+		// and should not cause the test suite to fail.
+		e2e.Failf("This test intentionally fails to validate informing lifecycle behavior. " +
+			"If the lifecycle handling is working correctly, this failure should not cause " +
+			"the overall test suite to fail, and this output should be prefixed with a " +
+			"message indicating that this is an informing test.")
+	})
+})
+
 var _ = g.Describe("[sig-ci] [Early] prow job name", func() {
 	defer g.GinkgoRecover()
 	oc := exutil.NewCLI("job-names")

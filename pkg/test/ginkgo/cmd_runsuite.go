@@ -19,6 +19,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/openshift-eng/openshift-tests-extension/pkg/extension"
+	"github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -191,6 +192,111 @@ func shouldRetryTest(ctx context.Context, test *testCase, permittedRetryImageTag
 	tlog.WithField("image", info.Source.SourceImage).
 		Debug("Test not eligible for retry based on image tag")
 	return false
+}
+
+type testResultSummary struct {
+	Pass              int
+	Fail              int
+	Skip              int
+	Flakes            []string
+	InformingFailures int
+	BlockingFailures  int
+	FailingTests      []*testCase
+	Duration          time.Duration
+}
+
+// String returns a formatted summary of test results
+func (s *testResultSummary) String() string {
+	if s.Fail == 0 {
+		return fmt.Sprintf("%d pass, %d skip (%s)", s.Pass, s.Skip, s.Duration)
+	}
+
+	return fmt.Sprintf("%d fail (%d blocking, %d informing), %d pass, %d skip (%s)",
+		s.Fail, s.BlockingFailures, s.InformingFailures, s.Pass, s.Skip, s.Duration)
+}
+
+func processTestResults(tests []*testCase, duration time.Duration, out io.Writer) *testResultSummary {
+	summary := &testResultSummary{
+		FailingTests: make([]*testCase, 0),
+		Flakes:       make([]string, 0),
+		Duration:     duration,
+	}
+
+	// Track test names that have both failures and successes (flakes)
+	testResults := make(map[string][]bool) // true for success, false for failure
+
+	for _, test := range tests {
+		// Track all results for flake detection
+		if _, exists := testResults[test.name]; !exists {
+			testResults[test.name] = make([]bool, 0)
+		}
+
+		switch {
+		case test.success:
+			summary.Pass++
+			testResults[test.name] = append(testResults[test.name], true)
+		case test.failed:
+			summary.Fail++
+			testResults[test.name] = append(testResults[test.name], false)
+			summary.FailingTests = append(summary.FailingTests, test)
+
+			// Handle lifecycle-aware failure processing
+			isInforming := false
+			if test.extensionTestSpec != nil && test.extensionTestSpec.ExtensionTestSpec != nil {
+				isInforming = test.extensionTestSpec.ExtensionTestSpec.Lifecycle == extensiontests.LifecycleInforming
+			}
+
+			if isInforming {
+				summary.InformingFailures++
+
+				// Inject the informing message at the beginning of the failure output
+				informingMessage := "*** NOTE: This test's lifecycle is INFORMING and therefore this failure doesn't contribute to the overall success or failure state of the test suite.\n\n"
+
+				// Prepend the message to the test output
+				if len(test.testOutputBytes) > 0 {
+					test.testOutputBytes = append([]byte(informingMessage), test.testOutputBytes...)
+				} else {
+					test.testOutputBytes = []byte(informingMessage)
+				}
+
+				logrus.WithField("test", test.name).Info("Test failed with INFORMING lifecycle - failure will not contribute to overall suite failure")
+			} else {
+				summary.BlockingFailures++
+				logrus.WithField("test", test.name).Info("Test failed with BLOCKING lifecycle - failure will contribute to overall suite failure")
+			}
+		case test.skipped:
+			summary.Skip++
+		}
+	}
+
+	// Detect flakes (tests that have both successes and failures)
+	for testName, results := range testResults {
+		if len(results) > 1 {
+			hasSuccess := false
+			hasFailure := false
+			for _, result := range results {
+				if result {
+					hasSuccess = true
+				} else {
+					hasFailure = true
+				}
+			}
+			if hasSuccess && hasFailure {
+				summary.Flakes = append(summary.Flakes, testName)
+			}
+		}
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"pass":               summary.Pass,
+		"fail":               summary.Fail,
+		"skip":               summary.Skip,
+		"flakes":             len(summary.Flakes),
+		"informing_failures": summary.InformingFailures,
+		"blocking_failures":  summary.BlockingFailures,
+	}).Info("Processed test results")
+
+	return summary
 }
 
 func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdiscovery.ClusterConfiguration, junitSuiteName string, monitorTestInfo monitortestframework.MonitorTestInitializationInfo,
@@ -529,7 +635,8 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 		duration = duration.Round(time.Second)
 	}
 
-	pass, fail, skip, failing := summarizeTests(tests)
+	resultSummary := processTestResults(tests, duration, o.Out)
+	pass, fail, skip, failing := resultSummary.Pass, resultSummary.Fail, resultSummary.Skip, resultSummary.FailingTests
 
 	// Determine if we should retry any tests for flake detection
 	// Don't add more here without discussion with OCP architects, we should be moving towards not having any flakes
@@ -697,12 +804,6 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 		wasMasterNodeUpdated = clusterinfo.WasMasterNodeUpdated(events)
 	}
 
-	// report the outcome of the test
-	if len(failing) > 0 {
-		names := sets.NewString(testNames(failing)...).List()
-		fmt.Fprintf(o.Out, "Failing tests:\n\n%s\n\n", strings.Join(names, "\n"))
-	}
-
 	if len(o.JUnitDir) > 0 {
 		finalSuiteResults := generateJUnitTestSuiteResults(junitSuiteName, duration, tests, syntheticTestResults...)
 		if err := writeJUnitReport(finalSuiteResults, "junit_e2e", timeSuffix, o.JUnitDir, o.ErrOut); err != nil {
@@ -718,21 +819,31 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 		}
 	}
 
-	if fail > 0 {
-		if len(failing) > 0 || suite.MaximumAllowedFlakes == 0 {
-			return fmt.Errorf("%d fail, %d pass, %d skip (%s)", fail, pass, skip, duration)
-		}
-		fmt.Fprintf(o.Out, "%d flakes detected, suite allows passing with only flakes\n\n", fail)
+	// Check for test failures first
+	if fail > 0 && resultSummary.BlockingFailures > 0 {
+		return fmt.Errorf(resultSummary.String())
 	}
 
+	// Handle special cases that override test results
 	if syntheticFailure {
-		return fmt.Errorf("failed because an invariant was violated, %d pass, %d skip (%s)\n", pass, skip, duration)
+		return fmt.Errorf("failed because an invariant was violated, %d pass, %d skip (%s)", pass, skip, duration)
 	}
 	if monitorTestResultState != monitor.Succeeded {
 		return fmt.Errorf("failed due to a MonitorTest failure")
 	}
 
-	fmt.Fprintf(o.Out, "%d pass, %d skip (%s)\n", pass, skip, duration)
+	// Print final summary
+	fmt.Fprintf(o.Out, "%s\n", resultSummary.String())
+
+	// Handle special messaging for informing-only failures and flakes
+	if fail > 0 && resultSummary.BlockingFailures == 0 {
+		if resultSummary.InformingFailures > 0 && len(resultSummary.Flakes) == 0 {
+			fmt.Fprintf(o.Out, "Suite passes despite informing failures\n")
+		} else if len(resultSummary.Flakes) > 0 {
+			fmt.Fprintf(o.Out, "Flakes detected, suite allows passing with only flakes\n")
+		}
+	}
+
 	return ctx.Err()
 }
 

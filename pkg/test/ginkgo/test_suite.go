@@ -17,9 +17,10 @@ func extensionTestSpecsToOriginTestCases(specs extensions.ExtensionTestSpecs) ([
 	var tests []*testCase
 	for _, spec := range specs {
 		tc := &testCase{
-			name:    spec.Name,
-			rawName: spec.Name,
-			binary:  spec.Binary,
+			name:              spec.Name,
+			rawName:           spec.Name,
+			binary:            spec.Binary,
+			extensionTestSpec: spec,
 		}
 
 		// Override timeout from suite with `[Timeout:X]` duration
@@ -71,20 +72,22 @@ type testCase struct {
 	success             bool
 	timedOut            bool
 	extensionTestResult *extensions.ExtensionTestResult
+	extensionTestSpec   *extensions.ExtensionTestSpec
 
 	previous *testCase
 }
 
 func (t *testCase) Retry() *testCase {
 	copied := &testCase{
-		name:          t.name,
-		spec:          t.spec,
-		binary:        t.binary,
-		rawName:       t.rawName,
-		binaryName:    t.binaryName,
-		locations:     t.locations,
-		testExclusion: t.testExclusion,
-		testTimeout:   t.testTimeout,
+		name:              t.name,
+		spec:              t.spec,
+		binary:            t.binary,
+		rawName:           t.rawName,
+		binaryName:        t.binaryName,
+		locations:         t.locations,
+		testExclusion:     t.testExclusion,
+		testTimeout:       t.testTimeout,
+		extensionTestSpec: t.extensionTestSpec,
 
 		previous: t,
 	}
