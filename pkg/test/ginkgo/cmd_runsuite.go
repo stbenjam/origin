@@ -19,6 +19,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/openshift-eng/openshift-tests-extension/pkg/extension"
+	"github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
 	configv1 "github.com/openshift/api/config/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -287,6 +288,10 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 	specs, err = testFilterChain.Apply(ctx, specs)
 	if err != nil {
 		return err
+	}
+
+	if len(specs) == 0 {
+		return fmt.Errorf("no tests to run")
 	}
 
 	tests, err := extensionTestSpecsToOriginTestCases(specs)
@@ -697,10 +702,26 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 		wasMasterNodeUpdated = clusterinfo.WasMasterNodeUpdated(events)
 	}
 
-	// report the outcome of the test
-	if len(failing) > 0 {
-		names := sets.NewString(testNames(failing)...).List()
-		fmt.Fprintf(o.Out, "Failing tests:\n\n%s\n\n", strings.Join(names, "\n"))
+	var terminalFailing, nonTerminalFailing []*testCase
+	for _, test := range failing {
+		if isTerminalFailure(test) {
+			terminalFailing = append(terminalFailing, test)
+		} else {
+			test.testOutputBytes = []byte(fmt.Sprintf("NON-TERMINAL FAILURE: This test failure is not considered terminal beccause its lifecycle is '%s' and will not prevent the overall suite from passing.\n\n%s",
+				test.extensionTestResult.Lifecycle,
+				string(test.testOutputBytes)))
+			nonTerminalFailing = append(nonTerminalFailing, test)
+		}
+	}
+
+	if len(nonTerminalFailing) > 0 {
+		names := sets.NewString(testNames(nonTerminalFailing)...).List()
+		fmt.Fprintf(o.Out, "Non-terminal failing tests that don't prevent the overall suite from passing:\n\n%s\n\n", strings.Join(names, "\n"))
+	}
+
+	if len(terminalFailing) > 0 {
+		names := sets.NewString(testNames(terminalFailing)...).List()
+		fmt.Fprintf(o.Out, "Terminal failing tests:\n\n%s\n\n", strings.Join(names, "\n"))
 	}
 
 	if len(o.JUnitDir) > 0 {
@@ -718,22 +739,33 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 		}
 	}
 
-	if fail > 0 {
-		if len(failing) > 0 || suite.MaximumAllowedFlakes == 0 {
-			return fmt.Errorf("%d fail, %d pass, %d skip (%s)", fail, pass, skip, duration)
-		}
-		fmt.Fprintf(o.Out, "%d flakes detected, suite allows passing with only flakes\n\n", fail)
-	}
-
-	if syntheticFailure {
+	switch {
+	case len(terminalFailing) > 0:
+		return fmt.Errorf("%d terminal fail, %d non-terminal fail, %d pass, %d skip (%s)", len(terminalFailing), len(nonTerminalFailing), pass, skip, duration)
+	case syntheticFailure:
 		return fmt.Errorf("failed because an invariant was violated, %d pass, %d skip (%s)\n", pass, skip, duration)
-	}
-	if monitorTestResultState != monitor.Succeeded {
+	case monitorTestResultState != monitor.Succeeded:
 		return fmt.Errorf("failed due to a MonitorTest failure")
+	case len(nonTerminalFailing) > 0:
+		fmt.Fprintf(o.Out, "%d non-terminal failures, %d pass, %d skip (%s): suite passes despite failures", len(nonTerminalFailing), pass, skip, duration)
+	default:
+		fmt.Fprintf(o.Out, "%d pass, %d skip (%s)\n", pass, skip, duration)
 	}
 
-	fmt.Fprintf(o.Out, "%d pass, %d skip (%s)\n", pass, skip, duration)
 	return ctx.Err()
+}
+
+func isTerminalFailure(test *testCase) bool {
+	if test.extensionTestResult == nil {
+		return true
+	}
+
+	switch test.extensionTestResult.Lifecycle {
+	case extensiontests.LifecycleInforming:
+		return false
+	default:
+		return true
+	}
 }
 
 func writeExtensionTestResults(tests []*testCase, dir, filePrefix, fileSuffix string, out io.Writer) error {
