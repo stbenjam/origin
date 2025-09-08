@@ -111,7 +111,7 @@ func NewGinkgoRunSuiteOptions(streams genericclioptions.IOStreams) *GinkgoRunSui
 	return &GinkgoRunSuiteOptions{
 		IOStreams:     streams,
 		ShardStrategy: "hash",
-		RetryPolicy:   RetryPolicyOnce, // Default to existing behavior
+		RetryPolicy:   RetryPolicyMulti,
 	}
 }
 
@@ -581,13 +581,11 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 		}
 
 	case RetryPolicyMulti:
-		// Multi-retry behavior: retry up to 10 times with conditions
-		if fail > 0 && fail <= maxTotalTestFailures && duration < maxIntraRunRetryDuration {
+		// Multi-retry behavior: retry up to 10 times with conditions per test
+		if fail > 0 && fail <= maxTotalTestFailures {
 			tests, failing, flaky = o.performMultiRetries(ctx, tests, failing, testRunnerContext, testCtx, parallelism, testOutputConfig, abortFn)
 		} else if fail > maxTotalTestFailures {
 			logrus.Warningf("Too many failures (%d > %d) to retry", fail, maxTotalTestFailures)
-		} else if duration >= maxIntraRunRetryDuration {
-			logrus.Warningf("Test run duration (%s) exceeds maximum retry duration (%s)", duration, maxIntraRunRetryDuration)
 		}
 	}
 
@@ -823,9 +821,14 @@ func (o *GinkgoRunSuiteOptions) performMultiRetries(ctx context.Context, tests [
 	testAttempts := make(map[string][]*testCase)
 
 	// Initialize with original failed tests
-	// In multi-retry mode, we retry ALL failed tests unconditionally
+	// In multi-retry mode, we retry failed tests that haven't exceeded the per-test duration limit
 	for _, test := range failing {
-		testAttempts[test.name] = []*testCase{test}
+		if test.duration < maxIntraRunRetryDuration {
+			testAttempts[test.name] = []*testCase{test}
+		} else {
+			logrus.Warningf("Test %s duration (%s) exceeds maximum retry duration (%s), skipping retries",
+				test.name, test.duration, maxIntraRunRetryDuration)
+		}
 	}
 
 	logrus.Infof("Starting multi-retry for %d eligible tests with up to %d attempts each",
