@@ -16,7 +16,7 @@ func (r *retryStrategyFlag) String() string {
 }
 
 func (r *retryStrategyFlag) Set(value string) error {
-	strategy, err := CreateRetryStrategy(value)
+	strategy, err := createRetryStrategy(value)
 	if err != nil {
 		return err
 	}

@@ -35,16 +35,16 @@ type RetryStrategy interface {
 	// Name returns the strategy name for CLI and logging
 	Name() string
 
-	// Should we attempt any retries given the list of failing tests?
+	// ShouldAttemptRetries determines if we attempt any retries given the list of failing tests
 	ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool
 
-	// What is the upper bound of retries are planned? (for reporting/planning)
+	// GetMaxRetries returns the upper bound of retries (for reporting/planning)
 	GetMaxRetries(testCase *testCase) int
 
-	// Should we continue retrying? (for actual control) Allows for early termination of retries.
+	// ShouldContinue determines if we continue retrying. Allows for early termination of retries.
 	ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool
 
-	// What's the final outcome after all attempts?
+	// DecideOutcome reports the final result of all attempts.
 	DecideOutcome(testName string, attempts []*testCase) RetryOutcome
 }
 
@@ -229,13 +229,11 @@ func (s *NoRetryStrategy) DecideOutcome(testName string, attempts []*testCase) R
 	panic("Unexpected call to NoRetryStrategy.DecideOutcome - this should never happen")
 }
 
-// GetAvailableRetryStrategies returns a list of available strategy names
-func GetAvailableRetryStrategies() []string {
+func getAvailableRetryStrategies() []string {
 	return []string{"once", "aggressive", "none"}
 }
 
-// CreateRetryStrategy creates a strategy by name
-func CreateRetryStrategy(name string) (RetryStrategy, error) {
+func createRetryStrategy(name string) (RetryStrategy, error) {
 	switch name {
 	case "once":
 		return NewRetryOnceStrategy(), nil
@@ -244,6 +242,6 @@ func CreateRetryStrategy(name string) (RetryStrategy, error) {
 	case "none":
 		return &NoRetryStrategy{}, nil
 	default:
-		return nil, fmt.Errorf("unknown retry strategy: %s (available: %v)", name, GetAvailableRetryStrategies())
+		return nil, fmt.Errorf("unknown retry strategy: %s (available: %v)", name, getAvailableRetryStrategies())
 	}
 }
