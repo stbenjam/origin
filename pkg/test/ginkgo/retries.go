@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-	
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -30,7 +30,7 @@ const (
 // Example usage:
 //
 //	options.RetryStrategy = NewRetryOnceStrategy()                          // Restrictive retry with rules
-//	options.RetryStrategy = NewThresholdRetryStrategy(4)                    // Multiple retries with threshold
+//	options.RetryStrategy = NewAggressiveRetryStrategy(10, 4)               // Aggressive multiple retries
 type RetryStrategy interface {
 	// Name returns the strategy name for CLI and logging
 	Name() string
@@ -156,32 +156,32 @@ func (s *RetryOnceStrategy) shouldRetryTest(test *testCase) bool {
 	return false
 }
 
-// ThresholdRetryStrategy implements the multiple retry behavior with fixed failure threshold
-type ThresholdRetryStrategy struct {
+// AggressiveRetryStrategy implements the multiple retry behavior with fixed failure threshold
+type AggressiveRetryStrategy struct {
 	maxRetries       int
 	failureThreshold int
 }
 
-// NewThresholdRetryStrategy creates a strategy that retries tests multiple times
-func NewThresholdRetryStrategy(maxRetries, failureThreshold int) *ThresholdRetryStrategy {
-	return &ThresholdRetryStrategy{
+// NewAggressiveRetryStrategy creates a strategy that retries tests multiple times
+func NewAggressiveRetryStrategy(maxRetries, failureThreshold int) *AggressiveRetryStrategy {
+	return &AggressiveRetryStrategy{
 		maxRetries:       maxRetries,
 		failureThreshold: failureThreshold,
 	}
 }
 
 // Name implements RetryStrategy
-func (s *ThresholdRetryStrategy) Name() string {
-	return "threshold"
+func (s *AggressiveRetryStrategy) Name() string {
+	return "aggressive"
 }
 
 // ShouldAttemptRetries implements RetryStrategy
-func (s *ThresholdRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
+func (s *AggressiveRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
 	return len(failing) > 0 && len(failing) <= MaxTotalTestFailures
 }
 
 // GetMaxRetries implements RetryStrategy
-func (s *ThresholdRetryStrategy) GetMaxRetries(testCase *testCase) int {
+func (s *AggressiveRetryStrategy) GetMaxRetries(testCase *testCase) int {
 	// Skip retries for tests that exceed duration limit
 	if testCase.duration >= MaxIntraRunRetryDuration {
 		return 0
@@ -190,7 +190,7 @@ func (s *ThresholdRetryStrategy) GetMaxRetries(testCase *testCase) int {
 }
 
 // ShouldContinue implements RetryStrategy
-func (s *ThresholdRetryStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
+func (s *AggressiveRetryStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
 	// Stop if we've hit max attempts
 	if attemptNumber > s.maxRetries {
 		return false
@@ -206,7 +206,7 @@ func (s *ThresholdRetryStrategy) ShouldContinue(testCase *testCase, allAttempts 
 }
 
 // DecideOutcome implements RetryStrategy
-func (s *ThresholdRetryStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
+func (s *AggressiveRetryStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
 	failureCount := 0
 	skippedCount := 0
 
@@ -254,7 +254,7 @@ func (s *NoRetryStrategy) DecideOutcome(testName string, attempts []*testCase) R
 
 // GetAvailableRetryStrategies returns a list of available strategy names
 func GetAvailableRetryStrategies() []string {
-	return []string{"once", "threshold", "none"}
+	return []string{"once", "aggressive", "none"}
 }
 
 // CreateRetryStrategy creates a strategy by name
@@ -262,8 +262,8 @@ func CreateRetryStrategy(name string) (RetryStrategy, error) {
 	switch name {
 	case "once":
 		return NewRetryOnceStrategy(), nil
-	case "threshold":
-		return NewThresholdRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold), nil
+	case "aggressive":
+		return NewAggressiveRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold), nil
 	case "none":
 		return &NoRetryStrategy{}, nil
 	default:

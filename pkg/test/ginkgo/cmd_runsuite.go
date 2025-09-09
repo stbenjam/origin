@@ -97,7 +97,7 @@ func NewGinkgoRunSuiteOptions(streams genericclioptions.IOStreams) *GinkgoRunSui
 	return &GinkgoRunSuiteOptions{
 		IOStreams:     streams,
 		ShardStrategy: "hash",
-		RetryStrategy: NewThresholdRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold),
+		RetryStrategy: NewAggressiveRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold),
 	}
 }
 
