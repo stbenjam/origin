@@ -218,7 +218,8 @@ func (s *AggressiveRetryStrategy) DecideOutcome(testName string, attempts []*tes
 		}
 	}
 
-	if skippedCount > 0 {
+	// Only consider skipped if majority of attempts were skipped
+	if skippedCount > len(attempts)/2 {
 		return RetryOutcomeSkipped
 	}
 
