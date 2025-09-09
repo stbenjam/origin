@@ -737,13 +737,12 @@ func (o *GinkgoRunSuiteOptions) performRetries(ctx context.Context, tests []*tes
 			finalSkipped = append(finalSkipped, testName)
 
 		case RetryOutcomeFlaky:
-			// Consider it flaky/passing - update original test with retry info
+			// Consider it flaky - add ALL attempts to tests slice
 			finalFlaky = append(finalFlaky, testName)
-			// Find original test in tests list and update it
-			for i, t := range tests {
-				if t.name == testName && t.failed {
-					tests[i] = o.updateOriginalTestWithRetryInfo(t, attempts)
-					break
+			// Add all retry attempts to tests slice (excluding original which is already there)
+			for _, attempt := range attempts[1:] {
+				if !attempt.flake {
+					tests = append(tests, attempt)
 				}
 			}
 
