@@ -1,23 +1,29 @@
 package ginkgo
 
-import "fmt"
-
-type retryPolicyFlag RetryPolicy
-
-func (r *retryPolicyFlag) String() string {
-	return string(*r)
+type retryStrategyFlag struct {
+	strategy *RetryStrategy
 }
 
-func (r *retryPolicyFlag) Set(value string) error {
-	switch value {
-	case string(RetryPolicyNone), string(RetryPolicyOnce), string(RetryPolicyMulti):
-		*r = retryPolicyFlag(value)
-		return nil
-	default:
-		return fmt.Errorf("invalid retry policy: %s (valid options: none, once, multi)", value)
+func newRetryStrategyFlag(strategy *RetryStrategy) *retryStrategyFlag {
+	return &retryStrategyFlag{strategy: strategy}
+}
+
+func (r *retryStrategyFlag) String() string {
+	if r.strategy == nil || *r.strategy == nil {
+		return "threshold"
 	}
+	return (*r.strategy).Name()
 }
 
-func (r *retryPolicyFlag) Type() string {
+func (r *retryStrategyFlag) Set(value string) error {
+	strategy, err := CreateRetryStrategy(value)
+	if err != nil {
+		return err
+	}
+	*r.strategy = strategy
+	return nil
+}
+
+func (r *retryStrategyFlag) Type() string {
 	return "string"
 }

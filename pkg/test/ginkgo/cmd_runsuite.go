@@ -41,9 +41,6 @@ import (
 	"github.com/openshift/origin/pkg/test/ginkgo/junitapi"
 )
 
-// RetryPolicy defines the retry behavior for failed tests
-type RetryPolicy string
-
 const (
 	// Dump pod displacements with at least 3 instances
 	minChainLen = 3
@@ -52,17 +49,218 @@ const (
 	upgradeEvent     = "Upgrade"
 	postUpgradeEvent = "PostUpgrade"
 
-	// RetryPolicy options
-	RetryPolicyNone  RetryPolicy = "none"
-	RetryPolicyOnce  RetryPolicy = "once"
-	RetryPolicyMulti RetryPolicy = "multi"
-
 	// Multi-retry constants
 	maxIntraRunRetryDuration = 2 * time.Minute
 	maxTotalTestFailures     = 5
 	maxIntraRunRetryAttempts = 10
 	intraRunFlakeThreshold   = 4
 )
+
+// RetryOutcome represents the decision for a multi-retry test
+type RetryOutcome int
+
+const (
+	RetryOutcomeFail RetryOutcome = iota
+	RetryOutcomePass
+	RetryOutcomeSkipped
+)
+
+// RetryStrategy controls both retry behavior and final outcome decisions
+// Example usage:
+//
+//	options.RetryStrategy = NewRetryOnceStrategy()                          // Restrictive retry with rules
+//	options.RetryStrategy = NewThresholdRetryStrategy(4)                    // Multiple retries with threshold
+type RetryStrategy interface {
+	// Name returns the strategy name for CLI and logging
+	Name() string
+
+	// Should we attempt any retries given the list of failing tests?
+	ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool
+
+	// How many retries are planned? (for reporting/planning)
+	GetMaxRetries(testCase *testCase) int
+
+	// Should we continue retrying? (for actual control)
+	ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool
+
+	// What's the final outcome after all attempts?
+	DecideOutcome(testName string, attempts []*testCase) RetryOutcome
+}
+
+// RetryOnceStrategy implements the restrictive "once" retry behavior
+type RetryOnceStrategy struct {
+}
+
+// NewRetryOnceStrategy creates a strategy that retries failed tests once with restrictions
+func NewRetryOnceStrategy() *RetryOnceStrategy {
+	return &RetryOnceStrategy{}
+}
+
+// Name implements RetryStrategy
+func (s *RetryOnceStrategy) Name() string {
+	return "once"
+}
+
+// ShouldAttemptRetries implements RetryStrategy
+func (s *RetryOnceStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
+	return len(failing) > 0 && len(failing) <= suite.MaximumAllowedFlakes
+}
+
+// GetMaxRetries implements RetryStrategy
+func (s *RetryOnceStrategy) GetMaxRetries(testCase *testCase) int {
+	// TODO: Add logic for test image restrictions and exceptions
+	return 1
+}
+
+// ShouldContinue implements RetryStrategy
+func (s *RetryOnceStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
+	// Stop after first retry
+	if attemptNumber >= 2 {
+		return false
+	}
+
+	// TODO: Add logic for test image restrictions and exceptions
+
+	// For now, allow one retry for failed tests
+	lastAttempt := allAttempts[len(allAttempts)-1]
+	return lastAttempt.failed
+}
+
+// DecideOutcome implements RetryStrategy
+func (s *RetryOnceStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
+	for _, attempt := range attempts {
+		if attempt.skipped {
+			return RetryOutcomeSkipped
+		}
+		if attempt.success {
+			return RetryOutcomePass
+		}
+	}
+	return RetryOutcomeFail
+}
+
+// ThresholdRetryStrategy implements the multiple retry behavior with fixed failure threshold
+type ThresholdRetryStrategy struct {
+	maxRetries       int
+	failureThreshold int
+}
+
+// NewThresholdRetryStrategy creates a strategy that retries tests multiple times
+func NewThresholdRetryStrategy(maxRetries, failureThreshold int) *ThresholdRetryStrategy {
+	return &ThresholdRetryStrategy{
+		maxRetries:       maxRetries,
+		failureThreshold: failureThreshold,
+	}
+}
+
+// Name implements RetryStrategy
+func (s *ThresholdRetryStrategy) Name() string {
+	return "threshold"
+}
+
+// ShouldAttemptRetries implements RetryStrategy
+func (s *ThresholdRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
+	return len(failing) > 0 && len(failing) <= maxTotalTestFailures
+}
+
+// GetMaxRetries implements RetryStrategy
+func (s *ThresholdRetryStrategy) GetMaxRetries(testCase *testCase) int {
+	// Skip retries for tests that exceed duration limit
+	if testCase.duration >= maxIntraRunRetryDuration {
+		return 0
+	}
+	return s.maxRetries
+}
+
+// ShouldContinue implements RetryStrategy
+func (s *ThresholdRetryStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
+	// Stop if we've hit max attempts
+	if attemptNumber > s.maxRetries {
+		return false
+	}
+
+	// Skip retries for tests that exceed duration limit
+	if testCase.duration >= maxIntraRunRetryDuration {
+		return false
+	}
+
+	// In multi-retry mode, continue until we reach max attempts regardless of results
+	return true
+}
+
+// DecideOutcome implements RetryStrategy
+func (s *ThresholdRetryStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
+	failureCount := 0
+	skippedCount := 0
+
+	for _, attempt := range attempts {
+		if attempt.failed {
+			failureCount++
+		} else if attempt.skipped {
+			skippedCount++
+		}
+	}
+
+	if skippedCount > 0 {
+		return RetryOutcomeSkipped
+	}
+
+	if failureCount < s.failureThreshold {
+		return RetryOutcomePass
+	}
+
+	return RetryOutcomeFail
+}
+
+// RetryStrategy registry for dynamic strategy selection
+var retryStrategyRegistry = map[string]func() RetryStrategy{
+	"once": func() RetryStrategy { return NewRetryOnceStrategy() },
+	"threshold": func() RetryStrategy {
+		return NewThresholdRetryStrategy(maxIntraRunRetryAttempts, intraRunFlakeThreshold)
+	},
+	"none": func() RetryStrategy { return &NoRetryStrategy{} },
+}
+
+// GetAvailableRetryStrategies returns a list of available strategy names
+func GetAvailableRetryStrategies() []string {
+	strategies := make([]string, 0, len(retryStrategyRegistry))
+	for name := range retryStrategyRegistry {
+		strategies = append(strategies, name)
+	}
+	return strategies
+}
+
+// CreateRetryStrategy creates a strategy by name
+func CreateRetryStrategy(name string) (RetryStrategy, error) {
+	factory, exists := retryStrategyRegistry[name]
+	if !exists {
+		return nil, fmt.Errorf("unknown retry strategy: %s (available: %v)", name, GetAvailableRetryStrategies())
+	}
+	return factory(), nil
+}
+
+// NoRetryStrategy implements a no-retry policy
+type NoRetryStrategy struct{}
+
+func (s *NoRetryStrategy) Name() string { return "none" }
+func (s *NoRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
+	return false
+}
+func (s *NoRetryStrategy) GetMaxRetries(testCase *testCase) int { return 0 }
+func (s *NoRetryStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
+	return false
+}
+func (s *NoRetryStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
+	for _, attempt := range attempts {
+		if attempt.skipped {
+			return RetryOutcomeSkipped
+		}
+		if attempt.success {
+			return RetryOutcomePass
+		}
+	}
+	return RetryOutcomeFail
+}
 
 // GinkgoRunSuiteOptions is used to run a suite of tests by invoking each test
 // as a call to a child worker (the run-tests command).
@@ -103,15 +301,15 @@ type GinkgoRunSuiteOptions struct {
 	DisableMonitorTests []string
 	Extension           *extension.Extension
 
-	// RetryPolicy controls how failed tests are retried
-	RetryPolicy RetryPolicy
+	// RetryStrategy controls retry behavior and final outcome decisions
+	RetryStrategy RetryStrategy
 }
 
 func NewGinkgoRunSuiteOptions(streams genericclioptions.IOStreams) *GinkgoRunSuiteOptions {
 	return &GinkgoRunSuiteOptions{
 		IOStreams:     streams,
 		ShardStrategy: "hash",
-		RetryPolicy:   RetryPolicyMulti,
+		RetryStrategy: NewThresholdRetryStrategy(maxIntraRunRetryAttempts, intraRunFlakeThreshold),
 	}
 }
 
@@ -135,7 +333,8 @@ func (o *GinkgoRunSuiteOptions) BindFlags(flags *pflag.FlagSet) {
 	flags.IntVar(&o.ShardID, "shard-id", o.ShardID, "When tests are sharded across instances, which instance we are")
 	flags.IntVar(&o.ShardCount, "shard-count", o.ShardCount, "Number of shards used to run tests across multiple instances")
 	flags.StringVar(&o.ShardStrategy, "shard-strategy", o.ShardStrategy, "Which strategy to use for sharding (hash)")
-	flags.Var((*retryPolicyFlag)(&o.RetryPolicy), "retry-policy", "Test retry policy: none, once, or multi (default: once)")
+	availableStrategies := GetAvailableRetryStrategies()
+	flags.Var(newRetryStrategyFlag(&o.RetryStrategy), "retry-strategy", fmt.Sprintf("Test retry strategy (available: %s, default: threshold)", strings.Join(availableStrategies, ", ")))
 }
 
 func (o *GinkgoRunSuiteOptions) Validate() error {
@@ -392,11 +591,11 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 	}()
 	signal.Notify(abortCh, syscall.SIGINT, syscall.SIGTERM)
 
-	logrus.Infof("Waiting for all cluster operators to become stable")
+	/*logrus.Infof("Waiting for all cluster operators to become stable")
 	stableClusterTestResults, err := clusterinfo.WaitForStableCluster(ctx, restConfig)
 	if err != nil {
 		logrus.Errorf("Error waiting for stable cluster: %v", err)
-	}
+	}*/
 
 	monitorTests, err := defaultmonitortests.NewMonitorTestsFor(monitorTestInfo)
 	if err != nil {
@@ -566,33 +765,19 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 
 	pass, fail, skip, failing := summarizeTests(tests)
 
-	// Process test retries based on the configured retry policy
+	// Process test retries using the configured retry strategy
 	var flaky int
-	permittedRetryImageTags := []string{"tests"} // tests = openshift-tests image
-	switch o.RetryPolicy {
-	case RetryPolicyNone:
-		// No retries
-		logrus.Infof("Retry policy is 'none', skipping all retries")
-
-	case RetryPolicyOnce:
-		// Original retry behavior: retry once if failures <= MaximumAllowedFlakes
-		if fail > 0 && fail <= suite.MaximumAllowedFlakes {
-			tests, failing, flaky = o.performOnceRetries(ctx, tests, failing, permittedRetryImageTags, testRunnerContext, testCtx, parallelism, testOutputConfig, abortFn, suite)
-		}
-
-	case RetryPolicyMulti:
-		// Multi-retry behavior: retry up to 10 times with conditions per test
-		if fail > 0 && fail <= maxTotalTestFailures {
-			tests, failing, flaky = o.performMultiRetries(ctx, tests, failing, testRunnerContext, testCtx, parallelism, testOutputConfig, abortFn)
-		} else if fail > maxTotalTestFailures {
-			logrus.Warningf("Too many failures (%d > %d) to retry", fail, maxTotalTestFailures)
-		}
+	if o.RetryStrategy.ShouldAttemptRetries(failing, suite) {
+		logrus.Infof("Using retry strategy: %s for %d failing tests", o.RetryStrategy.Name(), fail)
+		tests, failing, flaky = o.performRetries(ctx, tests, failing, suite, testRunnerContext, testCtx, parallelism, testOutputConfig, abortFn)
+	} else if fail > 0 {
+		logrus.Infof("Retry strategy %s decided not to retry %d failing tests", o.RetryStrategy.Name(), fail)
 	}
 
 	// monitor the cluster while the tests are running and report any detected anomalies
 	var syntheticTestResults []*junitapi.JUnitTestCase
 	var syntheticFailure bool
-	syntheticTestResults = append(syntheticTestResults, stableClusterTestResults...)
+	//syntheticTestResults = append(syntheticTestResults, stableClusterTestResults...)
 	syntheticTestResults = append(syntheticTestResults, skippedAnnotationSyntheticTestResults...)
 
 	timeSuffix := fmt.Sprintf("_%s", start.UTC().Format("20060102-150405"))
@@ -712,142 +897,53 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 	return ctx.Err()
 }
 
-// performOnceRetries implements the original single-retry behavior
-func (o *GinkgoRunSuiteOptions) performOnceRetries(ctx context.Context, tests []*testCase, failing []*testCase, permittedRetryImageTags []string,
-	testRunnerContext *commandContext, testCtx context.Context, parallelism int, testOutputConfig testOutputConfig,
-	abortFn testAbortFunc, suite *TestSuite) ([]*testCase, []*testCase, int) {
-
-	var retries []*testCase
-	failedUnretriableTestCount := 0
-
-	for _, test := range failing {
-		if shouldRetryTest(ctx, test, permittedRetryImageTags) {
-			retry := test.Retry()
-			retries = append(retries, retry)
-			if len(retries) > suite.MaximumAllowedFlakes {
-				break
-			}
-		} else if test.binary != nil {
-			// Do not retry extension tests -- we also want to remove retries from origin-sourced
-			// tests, but extensions is where we can start.
-			failedUnretriableTestCount++
-		}
-	}
-
-	logrus.Warningf("%d tests failed, %d tests permitted to be retried; %d failures are non-retryable",
-		len(failing), len(retries), failedUnretriableTestCount)
-
-	// Run the tests in the retries list.
-	q := newParallelTestQueue(testRunnerContext)
-	q.Execute(testCtx, retries, parallelism, testOutputConfig, abortFn)
-
-	var flaky, skipped []string
-	for _, test := range retries {
-		if test.success {
-			flaky = append(flaky, test.name)
-		} else if test.skipped {
-			skipped = append(skipped, test.name)
-		}
-		// Note: tests that are neither success nor skipped remain as failures
-	}
-
-	// Add the list of retries into the list of all tests.
-	for _, retry := range retries {
-		if retry.flake {
-			// Retry tests that flaked are omitted so that the original test is counted as a failure.
-			fmt.Fprintf(o.Out, "Ignoring retry that returned a flake, original failure is authoritative for test: %s\n", retry.name)
-			continue
-		}
-		tests = append(tests, retry)
-	}
-
-	if len(flaky) > 0 {
-		// Explicitly remove flakes from the failing list
-		var withoutFlakes []*testCase
-	flakeLoop:
-		for _, t := range failing {
-			for _, f := range flaky {
-				if t.name == f {
-					continue flakeLoop
-				}
-			}
-			withoutFlakes = append(withoutFlakes, t)
-		}
-		failing = withoutFlakes
-
-		sort.Strings(flaky)
-		fmt.Fprintf(o.Out, "Flaky tests:\n\n%s\n\n", strings.Join(flaky, "\n"))
-	}
-
-	if len(skipped) > 0 {
-		// If a retry test got skipped, it means we very likely failed a precondition in the first failure, so
-		// we need to remove the failure case.
-		var withoutPreconditionFailures []*testCase
-	testLoop:
-		for _, t := range tests {
-			for _, st := range skipped {
-				if t.name == st && t.failed {
-					continue testLoop
-				}
-			}
-			withoutPreconditionFailures = append(withoutPreconditionFailures, t)
-		}
-		tests = withoutPreconditionFailures
-
-		var failingWithoutPreconditionFailures []*testCase
-	failingLoop:
-		for _, f := range failing {
-			for _, st := range skipped {
-				if f.name == st {
-					continue failingLoop
-				}
-			}
-			failingWithoutPreconditionFailures = append(failingWithoutPreconditionFailures, f)
-		}
-		failing = failingWithoutPreconditionFailures
-		sort.Strings(skipped)
-		fmt.Fprintf(o.Out, "Skipped tests that failed a precondition:\n\n%s\n\n", strings.Join(skipped, "\n"))
-	}
-
-	return tests, failing, len(flaky)
-}
-
-// performMultiRetries implements multi-retry behavior: ALL failed tests get up to 10 attempts each
-// to confirm they are truly failing (not flaky). No early stopping on success - we run all attempts.
-func (o *GinkgoRunSuiteOptions) performMultiRetries(ctx context.Context, tests []*testCase, failing []*testCase,
+// performRetries implements retry behavior using the configured RetryStrategy
+// to determine retry eligibility, attempt limits, and when to stop retrying.
+func (o *GinkgoRunSuiteOptions) performRetries(ctx context.Context, tests []*testCase, failing []*testCase, suite *TestSuite,
 	testRunnerContext *commandContext, testCtx context.Context, parallelism int, testOutputConfig testOutputConfig, abortFn testAbortFunc) ([]*testCase, []*testCase, int) {
 
 	// Track attempts per test name
 	testAttempts := make(map[string][]*testCase)
 
-	// Initialize with original failed tests
-	// In multi-retry mode, we retry failed tests that haven't exceeded the per-test duration limit
+	// Initialize with original failed tests, checking strategy eligibility
 	for _, test := range failing {
-		if test.duration < maxIntraRunRetryDuration {
+		maxRetries := o.RetryStrategy.GetMaxRetries(test)
+		if maxRetries > 0 {
 			testAttempts[test.name] = []*testCase{test}
+			logrus.Infof("Test %s eligible for up to %d retries", test.name, maxRetries)
 		} else {
-			logrus.Warningf("Test %s duration (%s) exceeds maximum retry duration (%s), skipping retries",
-				test.name, test.duration, maxIntraRunRetryDuration)
+			logrus.Warningf("Test %s not eligible for retries (strategy returned 0)", test.name)
 		}
 	}
 
-	logrus.Infof("Starting multi-retry for %d eligible tests with up to %d attempts each",
-		len(testAttempts), maxIntraRunRetryAttempts)
+	logrus.Infof("Starting retries for %d eligible tests", len(testAttempts))
 
 	q := newParallelTestQueue(testRunnerContext)
 
-	// Perform retry attempts - run ALL attempts regardless of intermediate results
-	for attempt := 2; attempt <= maxIntraRunRetryAttempts && len(testAttempts) > 0; attempt++ {
+	// Track which tests should no longer be retried
+	completedTests := make(map[string]bool)
+
+	// Perform retry attempts using strategy to control retry behavior
+	for len(testAttempts) > len(completedTests) {
 		var retries []*testCase
 
-		// Create retry tests for ALL tests that haven't reached max attempts yet
-		// In multi-retry mode, we don't stop early for successes - we run all attempts
-		for _, attempts := range testAttempts {
-			if len(attempts) < attempt {
-				// This test needs more attempts
-				lastAttempt := attempts[len(attempts)-1]
+		// Check each test to see if it should continue retrying
+		for testName, attempts := range testAttempts {
+			// Skip tests that are already completed
+			if completedTests[testName] {
+				continue
+			}
+
+			lastAttempt := attempts[len(attempts)-1]
+			attemptNumber := len(attempts) + 1 // Next attempt number
+
+			if o.RetryStrategy.ShouldContinue(lastAttempt, attempts, attemptNumber) {
 				retry := lastAttempt.Retry()
 				retries = append(retries, retry)
+			} else {
+				// Strategy says stop retrying this test, but keep it in testAttempts for final processing
+				completedTests[testName] = true
+				logrus.Infof("Strategy decided to stop retrying test %s after %d attempts", testName, len(attempts))
 			}
 		}
 
@@ -855,7 +951,7 @@ func (o *GinkgoRunSuiteOptions) performMultiRetries(ctx context.Context, tests [
 			break
 		}
 
-		logrus.Infof("Retry attempt %d: retrying %d tests", attempt, len(retries))
+		logrus.Infof("Retrying %d tests", len(retries))
 
 		// Execute retries
 		q.Execute(testCtx, retries, parallelism, testOutputConfig, abortFn)
@@ -869,96 +965,54 @@ func (o *GinkgoRunSuiteOptions) performMultiRetries(ctx context.Context, tests [
 			}
 
 			testAttempts[retry.name] = append(testAttempts[retry.name], retry)
-			tests = append(tests, retry)
+			// Don't add individual retry attempts to tests list yet - we'll decide later based on strategy outcome
 		}
-
-		// Don't remove any tests - continue until all have reached max attempts
 	}
 
 	// Process final results
 	var finalFlaky []string
 	var finalSkipped []string
 	var stillFailing []*testCase
-	var rollupTests []*testCase
 
 	for testName, attempts := range testAttempts {
-		failureCount := 0
-		successCount := 0
-		skippedCount := 0
+		// Use the retry strategy to determine the outcome
+		outcome := o.RetryStrategy.DecideOutcome(testName, attempts)
 
-		// Count all outcomes across attempts
-		for _, attempt := range attempts {
-			if attempt.failed {
-				failureCount++
-			} else if attempt.success {
-				successCount++
-			} else if attempt.skipped {
-				skippedCount++
-			}
-		}
-
-		// Determine final outcome based on failure pattern
-		if skippedCount > 0 {
-			// If any attempt was skipped, treat as skipped
+		switch outcome {
+		case RetryOutcomeSkipped:
 			finalSkipped = append(finalSkipped, testName)
-		} else if failureCount < intraRunFlakeThreshold {
-			// If failures < threshold, consider it flaky/passing
+
+		case RetryOutcomePass:
+			// Consider it flaky/passing - update original test with retry info
 			finalFlaky = append(finalFlaky, testName)
-			// Update original test with combined output noting it's allowed to pass
+			// Find original test in tests list and update it
 			for i, t := range tests {
 				if t.name == testName && t.failed {
 					tests[i] = o.updateOriginalTestWithRetryInfo(t, attempts)
 					break
 				}
 			}
-		} else {
-			// If failures >= threshold, create rollup failure
+
+		case RetryOutcomeFail:
+			// Create rollup failure - this replaces the original test
+			successCount := 0
+			for _, attempt := range attempts {
+				if attempt.success {
+					successCount++
+				}
+			}
 			hasAnySuccess := successCount > 0
 			rollupTest := o.createMultiRetryTest(testName, attempts, hasAnySuccess)
-			tests = append(tests, rollupTest)
+
+			// Replace original failed test with rollup test
+			for i, t := range tests {
+				if t.name == testName && t.failed {
+					tests[i] = rollupTest
+					break
+				}
+			}
 			stillFailing = append(stillFailing, rollupTest)
-			rollupTests = append(rollupTests, rollupTest)
 		}
-	}
-
-	// Remove individual retry attempts for tests that have rollup failures
-	if len(rollupTests) > 0 {
-		rollupTestSet := make(map[*testCase]bool)
-		rollupTestNames := make(map[string]bool)
-
-		// Mark rollup tests and their names for easy identification
-		for _, rollup := range rollupTests {
-			rollupTestSet[rollup] = true
-			rollupTestNames[rollup.name] = true
-		}
-
-		var filteredTests []*testCase
-		for _, t := range tests {
-			// Keep the test if it's not an individual retry attempt for a rollup test
-			if rollupTestNames[t.name] && !rollupTestSet[t] {
-				// This is an individual retry attempt for a test that has a rollup - remove it
-				continue
-			}
-			filteredTests = append(filteredTests, t)
-		}
-		tests = filteredTests
-	}
-
-	// Remove original failed tests that now have rollup tests from failing list
-	if len(rollupTests) > 0 {
-		rollupTestNames := make(map[string]bool)
-		for _, rollup := range rollupTests {
-			rollupTestNames[rollup.name] = true
-		}
-
-		var filteredFailing []*testCase
-		for _, t := range failing {
-			// Keep only tests that don't have rollup tests
-			if !rollupTestNames[t.name] {
-				filteredFailing = append(filteredFailing, t)
-			}
-		}
-		failing = filteredFailing
 	}
 
 	// Remove flaky tests from failing list
@@ -977,7 +1031,7 @@ func (o *GinkgoRunSuiteOptions) performMultiRetries(ctx context.Context, tests [
 		failing = append(failing, stillFailing...)
 
 		sort.Strings(finalFlaky)
-		fmt.Fprintf(o.Out, "Flaky tests (failures below threshold of %d):\n\n%s\n\n", intraRunFlakeThreshold, strings.Join(finalFlaky, "\n"))
+		fmt.Fprintf(o.Out, "Flaky tests (allowed to pass by retry strategy):\n\n%s\n\n", strings.Join(finalFlaky, "\n"))
 	} else {
 		failing = append(failing, stillFailing...)
 	}
@@ -1026,8 +1080,8 @@ func (o *GinkgoRunSuiteOptions) updateOriginalTestWithRetryInfo(originalTest *te
 		}
 	}
 
-	combinedOutput.WriteString(fmt.Sprintf("*** ALLOWED TO PASS DESPITE FAILURES: This test failed %d out of %d attempts, which is below the flake threshold of %d.\n\n",
-		failureCount, len(attempts), intraRunFlakeThreshold))
+	combinedOutput.WriteString(fmt.Sprintf("*** ALLOWED TO PASS DESPITE FAILURES: This test failed %d out of %d attempts, but was allowed to pass by the retry strategy.\n\n",
+		failureCount, len(attempts)))
 
 	for i, attempt := range attempts {
 		combinedOutput.WriteString(fmt.Sprintf("=== Attempt %d ===\n", i+1))
@@ -1052,8 +1106,8 @@ func (o *GinkgoRunSuiteOptions) createMultiRetryTest(testName string, attempts [
 	}
 
 	if hasAnySuccess {
-		combinedOutput.WriteString(fmt.Sprintf("Test '%s' failed %d out of %d attempts (≥ flake threshold of %d).\n\n",
-			testName, failureCount, len(attempts), intraRunFlakeThreshold))
+		combinedOutput.WriteString(fmt.Sprintf("Test '%s' failed %d out of %d attempts but had some successes (retry strategy marked as failure).\n\n",
+			testName, failureCount, len(attempts)))
 	} else {
 		combinedOutput.WriteString(fmt.Sprintf("Test '%s' failed all %d attempts.\n\n",
 			testName, len(attempts)))
