@@ -9,13 +9,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// Retry constants
 const (
+	defaultRetryStrategy     = "aggressive"
 	maxIntraRunRetryDuration = 2 * time.Minute
 	maxTotalTestFailures     = 5
 	maxIntraRunRetryAttempts = 10
 	intraRunFlakeThreshold   = 4
-	defaultRetryStrategy     = "aggressive"
 )
 
 // RetryOutcome represents the decision for a multi-retry test
@@ -39,39 +38,34 @@ type RetryStrategy interface {
 	// Should we attempt any retries given the list of failing tests?
 	ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool
 
-	// How many retries are planned? (for reporting/planning)
+	// What is the upper bound of retries are planned? (for reporting/planning)
 	GetMaxRetries(testCase *testCase) int
 
-	// Should we continue retrying? (for actual control)
+	// Should we continue retrying? (for actual control) Allows for early termination of retries.
 	ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool
 
 	// What's the final outcome after all attempts?
 	DecideOutcome(testName string, attempts []*testCase) RetryOutcome
 }
 
-// RetryOnceStrategy implements the restrictive "once" retry behavior
 type RetryOnceStrategy struct {
 	PermittedRetryImageTags []string
 }
 
-// NewRetryOnceStrategy creates a strategy that retries failed tests once with restrictions
 func NewRetryOnceStrategy() *RetryOnceStrategy {
 	return &RetryOnceStrategy{
 		PermittedRetryImageTags: []string{"tests"}, // tests = openshift-tests image
 	}
 }
 
-// Name implements RetryStrategy
 func (s *RetryOnceStrategy) Name() string {
 	return "once"
 }
 
-// ShouldAttemptRetries implements RetryStrategy
 func (s *RetryOnceStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
 	return len(failing) > 0 && len(failing) <= suite.MaximumAllowedFlakes
 }
 
-// GetMaxRetries implements RetryStrategy
 func (s *RetryOnceStrategy) GetMaxRetries(testCase *testCase) int {
 	if s.shouldRetryTest(testCase) {
 		return 1
@@ -79,7 +73,6 @@ func (s *RetryOnceStrategy) GetMaxRetries(testCase *testCase) int {
 	return 0
 }
 
-// ShouldContinue implements RetryStrategy
 func (s *RetryOnceStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
 	// Stop after first retry
 	if attemptNumber >= 2 {
@@ -96,7 +89,6 @@ func (s *RetryOnceStrategy) ShouldContinue(testCase *testCase, allAttempts []*te
 	return lastAttempt.failed
 }
 
-// DecideOutcome implements RetryStrategy
 func (s *RetryOnceStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
 	for _, attempt := range attempts {
 		if attempt.skipped {
@@ -109,8 +101,6 @@ func (s *RetryOnceStrategy) DecideOutcome(testName string, attempts []*testCase)
 	return RetryOutcomeFail
 }
 
-// shouldRetryTest determines if a failed test should be retried based on retry policies.
-// It returns true if the test is eligible for retry, false otherwise.
 func (s *RetryOnceStrategy) shouldRetryTest(test *testCase) bool {
 	// Internal tests (no binary) are eligible for retry, we shouldn't really have any of these
 	// now that origin is also an extension.
@@ -163,7 +153,6 @@ type AggressiveRetryStrategy struct {
 	failureThreshold int
 }
 
-// NewAggressiveRetryStrategy creates a strategy that retries tests multiple times
 func NewAggressiveRetryStrategy(maxRetries, failureThreshold int) *AggressiveRetryStrategy {
 	return &AggressiveRetryStrategy{
 		maxRetries:       maxRetries,
@@ -171,17 +160,14 @@ func NewAggressiveRetryStrategy(maxRetries, failureThreshold int) *AggressiveRet
 	}
 }
 
-// Name implements RetryStrategy
 func (s *AggressiveRetryStrategy) Name() string {
 	return "aggressive"
 }
 
-// ShouldAttemptRetries implements RetryStrategy
 func (s *AggressiveRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
 	return len(failing) > 0 && len(failing) <= maxTotalTestFailures
 }
 
-// GetMaxRetries implements RetryStrategy
 func (s *AggressiveRetryStrategy) GetMaxRetries(testCase *testCase) int {
 	// Skip retries for tests that exceed duration limit
 	if testCase.duration >= maxIntraRunRetryDuration {
@@ -190,7 +176,6 @@ func (s *AggressiveRetryStrategy) GetMaxRetries(testCase *testCase) int {
 	return s.maxRetries
 }
 
-// ShouldContinue implements RetryStrategy
 func (s *AggressiveRetryStrategy) ShouldContinue(testCase *testCase, allAttempts []*testCase, attemptNumber int) bool {
 	// Stop if we've hit max attempts
 	if attemptNumber > s.maxRetries {
@@ -206,7 +191,6 @@ func (s *AggressiveRetryStrategy) ShouldContinue(testCase *testCase, allAttempts
 	return true
 }
 
-// DecideOutcome implements RetryStrategy
 func (s *AggressiveRetryStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
 	failureCount := 0
 	skippedCount := 0
@@ -231,7 +215,6 @@ func (s *AggressiveRetryStrategy) DecideOutcome(testName string, attempts []*tes
 	return RetryOutcomeFail
 }
 
-// NoRetryStrategy implements a no-retry policy
 type NoRetryStrategy struct{}
 
 func (s *NoRetryStrategy) Name() string { return "none" }
@@ -243,15 +226,7 @@ func (s *NoRetryStrategy) ShouldContinue(testCase *testCase, allAttempts []*test
 	return false
 }
 func (s *NoRetryStrategy) DecideOutcome(testName string, attempts []*testCase) RetryOutcome {
-	for _, attempt := range attempts {
-		if attempt.skipped {
-			return RetryOutcomeSkipped
-		}
-		if attempt.success {
-			return RetryOutcomeFlaky
-		}
-	}
-	return RetryOutcomeFail
+	panic("Unexpected call to NoRetryStrategy.DecideOutcome - this should never happen")
 }
 
 // GetAvailableRetryStrategies returns a list of available strategy names
