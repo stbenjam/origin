@@ -10,7 +10,7 @@ func newRetryStrategyFlag(strategy *RetryStrategy) *retryStrategyFlag {
 
 func (r *retryStrategyFlag) String() string {
 	if r.strategy == nil || *r.strategy == nil {
-		return "aggressive"
+		return defaultRetryStrategy
 	}
 	return (*r.strategy).Name()
 }

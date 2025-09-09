@@ -94,10 +94,15 @@ type GinkgoRunSuiteOptions struct {
 }
 
 func NewGinkgoRunSuiteOptions(streams genericclioptions.IOStreams) *GinkgoRunSuiteOptions {
+	defaultStrategy, err := CreateRetryStrategy(defaultRetryStrategy)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create default retry strategy: %v", err))
+	}
+
 	return &GinkgoRunSuiteOptions{
 		IOStreams:     streams,
 		ShardStrategy: "hash",
-		RetryStrategy: NewAggressiveRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold),
+		RetryStrategy: defaultStrategy,
 	}
 }
 
@@ -122,7 +127,7 @@ func (o *GinkgoRunSuiteOptions) BindFlags(flags *pflag.FlagSet) {
 	flags.IntVar(&o.ShardCount, "shard-count", o.ShardCount, "Number of shards used to run tests across multiple instances")
 	flags.StringVar(&o.ShardStrategy, "shard-strategy", o.ShardStrategy, "Which strategy to use for sharding (hash)")
 	availableStrategies := GetAvailableRetryStrategies()
-	flags.Var(newRetryStrategyFlag(&o.RetryStrategy), "retry-strategy", fmt.Sprintf("Test retry strategy (available: %s, default: aggressive)", strings.Join(availableStrategies, ", ")))
+	flags.Var(newRetryStrategyFlag(&o.RetryStrategy), "retry-strategy", fmt.Sprintf("Test retry strategy (available: %s, default: %s)", strings.Join(availableStrategies, ", "), defaultRetryStrategy))
 }
 
 func (o *GinkgoRunSuiteOptions) Validate() error {

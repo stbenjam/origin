@@ -11,10 +11,11 @@ import (
 
 // Retry constants
 const (
-	MaxIntraRunRetryDuration = 2 * time.Minute
-	MaxTotalTestFailures     = 5
-	MaxIntraRunRetryAttempts = 10
-	IntraRunFlakeThreshold   = 4
+	maxIntraRunRetryDuration = 2 * time.Minute
+	maxTotalTestFailures     = 5
+	maxIntraRunRetryAttempts = 10
+	intraRunFlakeThreshold   = 4
+	defaultRetryStrategy     = "aggressive"
 )
 
 // RetryOutcome represents the decision for a multi-retry test
@@ -177,13 +178,13 @@ func (s *AggressiveRetryStrategy) Name() string {
 
 // ShouldAttemptRetries implements RetryStrategy
 func (s *AggressiveRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
-	return len(failing) > 0 && len(failing) <= MaxTotalTestFailures
+	return len(failing) > 0 && len(failing) <= maxTotalTestFailures
 }
 
 // GetMaxRetries implements RetryStrategy
 func (s *AggressiveRetryStrategy) GetMaxRetries(testCase *testCase) int {
 	// Skip retries for tests that exceed duration limit
-	if testCase.duration >= MaxIntraRunRetryDuration {
+	if testCase.duration >= maxIntraRunRetryDuration {
 		return 0
 	}
 	return s.maxRetries
@@ -197,7 +198,7 @@ func (s *AggressiveRetryStrategy) ShouldContinue(testCase *testCase, allAttempts
 	}
 
 	// Skip retries for tests that exceed duration limit
-	if testCase.duration >= MaxIntraRunRetryDuration {
+	if testCase.duration >= maxIntraRunRetryDuration {
 		return false
 	}
 
@@ -264,7 +265,7 @@ func CreateRetryStrategy(name string) (RetryStrategy, error) {
 	case "once":
 		return NewRetryOnceStrategy(), nil
 	case "aggressive":
-		return NewAggressiveRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold), nil
+		return NewAggressiveRetryStrategy(maxIntraRunRetryAttempts, intraRunFlakeThreshold), nil
 	case "none":
 		return &NoRetryStrategy{}, nil
 	default:
