@@ -48,12 +48,6 @@ const (
 	setupEvent       = "Setup"
 	upgradeEvent     = "Upgrade"
 	postUpgradeEvent = "PostUpgrade"
-
-	// Multi-retry constants
-	maxIntraRunRetryDuration = 2 * time.Minute
-	maxTotalTestFailures     = 5
-	maxIntraRunRetryAttempts = 10
-	intraRunFlakeThreshold   = 4
 )
 
 // GinkgoRunSuiteOptions is used to run a suite of tests by invoking each test
@@ -103,7 +97,7 @@ func NewGinkgoRunSuiteOptions(streams genericclioptions.IOStreams) *GinkgoRunSui
 	return &GinkgoRunSuiteOptions{
 		IOStreams:     streams,
 		ShardStrategy: "hash",
-		RetryStrategy: NewThresholdRetryStrategy(maxIntraRunRetryAttempts, intraRunFlakeThreshold),
+		RetryStrategy: NewThresholdRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold),
 	}
 }
 
@@ -156,54 +150,6 @@ func max(a, b int) int {
 		return a
 	}
 	return b
-}
-
-// shouldRetryTest determines if a failed test should be retried based on retry policies.
-// It returns true if the test is eligible for retry, false otherwise.
-func shouldRetryTest(ctx context.Context, test *testCase, permittedRetryImageTags []string) bool {
-	// Internal tests (no binary) are eligible for retry, we shouldn't really have any of these
-	// now that origin is also an extension.
-	if test.binary == nil {
-		return true
-	}
-
-	tlog := logrus.WithField("test", test.name)
-
-	// Test retries were disabled for some suites when they moved to OTE. This exposed small numbers of tests that
-	// were actually flaky and nobody knew. We attempted to fix these, a few did not make it in time. Restore
-	// retries for specific test names so the overall suite can continue to not retry.
-	retryTestNames := []string{
-		"[sig-instrumentation] Metrics should grab all metrics from kubelet /metrics/resource endpoint [Suite:openshift/conformance/parallel] [Suite:k8s]", // https://issues.redhat.com/browse/OCPBUGS-57477
-		"[sig-network] Services should be rejected for evicted pods (no endpoints exist) [Suite:openshift/conformance/parallel] [Suite:k8s]",               // https://issues.redhat.com/browse/OCPBUGS-57665
-		"[sig-node] Pods Extended Pod Container lifecycle evicted pods should be terminal [Suite:openshift/conformance/parallel] [Suite:k8s]",              // https://issues.redhat.com/browse/OCPBUGS-57658
-	}
-	for _, rtn := range retryTestNames {
-		if test.name == rtn {
-			tlog.Debug("test has an exception allowing retry")
-			return true
-		}
-	}
-
-	// Get extension info to check if it's from a permitted image
-	info, err := test.binary.Info(ctx)
-	if err != nil {
-		tlog.WithError(err).
-			Debug("Failed to get binary info, skipping retry")
-		return false
-	}
-
-	// Check if the test's source image is in the permitted retry list
-	for _, permittedTag := range permittedRetryImageTags {
-		if strings.Contains(info.Source.SourceImage, permittedTag) {
-			tlog.WithField("image", info.Source.SourceImage).
-				Debug("Permitting retry")
-			return true
-		}
-	}
-
-	tlog.WithField("image", info.Source.SourceImage).
-		Debug("Test not eligible for retry based on image tag")
-	return false
 }
 
 func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdiscovery.ClusterConfiguration, junitSuiteName string, monitorTestInfo monitortestframework.MonitorTestInitializationInfo,
@@ -776,7 +722,7 @@ func (o *GinkgoRunSuiteOptions) performRetries(ctx context.Context, tests []*tes
 		case RetryOutcomeSkipped:
 			finalSkipped = append(finalSkipped, testName)
 
-		case RetryOutcomePass:
+		case RetryOutcomeFlaky:
 			// Consider it flaky/passing - update original test with retry info
 			finalFlaky = append(finalFlaky, testName)
 			// Find original test in tests list and update it

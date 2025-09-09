@@ -1,13 +1,28 @@
 package ginkgo
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"strings"
+	"time"
+	
+	"github.com/sirupsen/logrus"
+)
+
+// Retry constants
+const (
+	MaxIntraRunRetryDuration = 2 * time.Minute
+	MaxTotalTestFailures     = 5
+	MaxIntraRunRetryAttempts = 10
+	IntraRunFlakeThreshold   = 4
+)
 
 // RetryOutcome represents the decision for a multi-retry test
 type RetryOutcome int
 
 const (
 	RetryOutcomeFail RetryOutcome = iota
-	RetryOutcomePass
+	RetryOutcomeFlaky
 	RetryOutcomeSkipped
 )
 
@@ -35,11 +50,14 @@ type RetryStrategy interface {
 
 // RetryOnceStrategy implements the restrictive "once" retry behavior
 type RetryOnceStrategy struct {
+	PermittedRetryImageTags []string
 }
 
 // NewRetryOnceStrategy creates a strategy that retries failed tests once with restrictions
 func NewRetryOnceStrategy() *RetryOnceStrategy {
-	return &RetryOnceStrategy{}
+	return &RetryOnceStrategy{
+		PermittedRetryImageTags: []string{"tests"}, // tests = openshift-tests image
+	}
 }
 
 // Name implements RetryStrategy
@@ -54,8 +72,10 @@ func (s *RetryOnceStrategy) ShouldAttemptRetries(failing []*testCase, suite *Tes
 
 // GetMaxRetries implements RetryStrategy
 func (s *RetryOnceStrategy) GetMaxRetries(testCase *testCase) int {
-	// TODO: Add logic for test image restrictions and exceptions
-	return 1
+	if s.shouldRetryTest(testCase) {
+		return 1
+	}
+	return 0
 }
 
 // ShouldContinue implements RetryStrategy
@@ -65,9 +85,12 @@ func (s *RetryOnceStrategy) ShouldContinue(testCase *testCase, allAttempts []*te
 		return false
 	}
 
-	// TODO: Add logic for test image restrictions and exceptions
+	// Check if test is eligible for retry based on image restrictions
+	if !s.shouldRetryTest(testCase) {
+		return false
+	}
 
-	// For now, allow one retry for failed tests
+	// Allow one retry for failed tests
 	lastAttempt := allAttempts[len(allAttempts)-1]
 	return lastAttempt.failed
 }
@@ -79,10 +102,58 @@ func (s *RetryOnceStrategy) DecideOutcome(testName string, attempts []*testCase)
 			return RetryOutcomeSkipped
 		}
 		if attempt.success {
-			return RetryOutcomePass
+			return RetryOutcomeFlaky
 		}
 	}
 	return RetryOutcomeFail
+}
+
+// shouldRetryTest determines if a failed test should be retried based on retry policies.
+// It returns true if the test is eligible for retry, false otherwise.
+func (s *RetryOnceStrategy) shouldRetryTest(test *testCase) bool {
+	// Internal tests (no binary) are eligible for retry, we shouldn't really have any of these
+	// now that origin is also an extension.
+	if test.binary == nil {
+		return true
+	}
+
+	tlog := logrus.WithField("test", test.name)
+
+	// Test retries were disabled for some suites when they moved to OTE. This exposed small numbers of tests that
+	// were actually flaky and nobody knew. We attempted to fix these, a few did not make it in time. Restore
+	// retries for specific test names so the overall suite can continue to not retry.
+	retryTestNames := []string{
+		"[sig-instrumentation] Metrics should grab all metrics from kubelet /metrics/resource endpoint [Suite:openshift/conformance/parallel] [Suite:k8s]", // https://issues.redhat.com/browse/OCPBUGS-57477
+		"[sig-network] Services should be rejected for evicted pods (no endpoints exist) [Suite:openshift/conformance/parallel] [Suite:k8s]",               // https://issues.redhat.com/browse/OCPBUGS-57665
+		"[sig-node] Pods Extended Pod Container lifecycle evicted pods should be terminal [Suite:openshift/conformance/parallel] [Suite:k8s]",              // https://issues.redhat.com/browse/OCPBUGS-57658
+	}
+	for _, rtn := range retryTestNames {
+		if test.name == rtn {
+			tlog.Debug("test has an exception allowing retry")
+			return true
+		}
+	}
+
+	// Get extension info to check if it's from a permitted image
+	info, err := test.binary.Info(context.Background())
+	if err != nil {
+		tlog.WithError(err).
+			Debug("Failed to get binary info, skipping retry")
+		return false
+	}
+
+	// Check if the test's source image is in the permitted retry list
+	for _, permittedTag := range s.PermittedRetryImageTags {
+		if strings.Contains(info.Source.SourceImage, permittedTag) {
+			tlog.WithField("image", info.Source.SourceImage).
+				Debug("Permitting retry")
+			return true
+		}
+	}
+
+	tlog.WithField("image", info.Source.SourceImage).
+		Debug("Test not eligible for retry based on image tag")
+	return false
 }
 
 // ThresholdRetryStrategy implements the multiple retry behavior with fixed failure threshold
@@ -106,13 +177,13 @@ func (s *ThresholdRetryStrategy) Name() string {
 
 // ShouldAttemptRetries implements RetryStrategy
 func (s *ThresholdRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
-	return len(failing) > 0 && len(failing) <= maxTotalTestFailures
+	return len(failing) > 0 && len(failing) <= MaxTotalTestFailures
 }
 
 // GetMaxRetries implements RetryStrategy
 func (s *ThresholdRetryStrategy) GetMaxRetries(testCase *testCase) int {
 	// Skip retries for tests that exceed duration limit
-	if testCase.duration >= maxIntraRunRetryDuration {
+	if testCase.duration >= MaxIntraRunRetryDuration {
 		return 0
 	}
 	return s.maxRetries
@@ -126,7 +197,7 @@ func (s *ThresholdRetryStrategy) ShouldContinue(testCase *testCase, allAttempts 
 	}
 
 	// Skip retries for tests that exceed duration limit
-	if testCase.duration >= maxIntraRunRetryDuration {
+	if testCase.duration >= MaxIntraRunRetryDuration {
 		return false
 	}
 
@@ -152,7 +223,7 @@ func (s *ThresholdRetryStrategy) DecideOutcome(testName string, attempts []*test
 	}
 
 	if failureCount < s.failureThreshold {
-		return RetryOutcomePass
+		return RetryOutcomeFlaky
 	}
 
 	return RetryOutcomeFail
@@ -175,35 +246,27 @@ func (s *NoRetryStrategy) DecideOutcome(testName string, attempts []*testCase) R
 			return RetryOutcomeSkipped
 		}
 		if attempt.success {
-			return RetryOutcomePass
+			return RetryOutcomeFlaky
 		}
 	}
 	return RetryOutcomeFail
 }
 
-// RetryStrategy registry for dynamic strategy selection
-var retryStrategyRegistry = map[string]func() RetryStrategy{
-	"once": func() RetryStrategy { return NewRetryOnceStrategy() },
-	"threshold": func() RetryStrategy {
-		return NewThresholdRetryStrategy(maxIntraRunRetryAttempts, intraRunFlakeThreshold)
-	},
-	"none": func() RetryStrategy { return &NoRetryStrategy{} },
-}
-
 // GetAvailableRetryStrategies returns a list of available strategy names
 func GetAvailableRetryStrategies() []string {
-	strategies := make([]string, 0, len(retryStrategyRegistry))
-	for name := range retryStrategyRegistry {
-		strategies = append(strategies, name)
-	}
-	return strategies
+	return []string{"once", "threshold", "none"}
 }
 
 // CreateRetryStrategy creates a strategy by name
 func CreateRetryStrategy(name string) (RetryStrategy, error) {
-	factory, exists := retryStrategyRegistry[name]
-	if !exists {
+	switch name {
+	case "once":
+		return NewRetryOnceStrategy(), nil
+	case "threshold":
+		return NewThresholdRetryStrategy(MaxIntraRunRetryAttempts, IntraRunFlakeThreshold), nil
+	case "none":
+		return &NoRetryStrategy{}, nil
+	default:
 		return nil, fmt.Errorf("unknown retry strategy: %s (available: %v)", name, GetAvailableRetryStrategies())
 	}
-	return factory(), nil
 }
