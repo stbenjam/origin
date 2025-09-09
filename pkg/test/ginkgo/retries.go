@@ -10,11 +10,17 @@ import (
 )
 
 const (
-	defaultRetryStrategy     = "aggressive"
-	maxIntraRunRetryDuration = 2 * time.Minute
-	maxTotalTestFailures     = 5
-	maxIntraRunRetryAttempts = 10
-	intraRunFlakeThreshold   = 4
+	defaultRetryStrategy = "aggressive"
+
+	// Aggressive strategy constants:
+	// won't attempt to retry tests that take longer than this
+	aggressiveMaximumTestDuration = 2 * time.Minute
+	// won't attempt any retries in "catastrophic" runs > 5 failures
+	aggressiveMaxTotalTestFailures = 5
+	// will retry the test up to this many times - but could be fewer
+	aggressiveMaxRetries = 10
+	// will consider a test flaky if it fails less than this many times
+	aggressiveMinFailureThreshold = 4
 )
 
 // RetryOutcome represents the decision for a multi-retry test
@@ -165,12 +171,12 @@ func (s *AggressiveRetryStrategy) Name() string {
 }
 
 func (s *AggressiveRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
-	return len(failing) > 0 && len(failing) <= maxTotalTestFailures
+	return len(failing) > 0 && len(failing) <= aggressiveMaxTotalTestFailures
 }
 
 func (s *AggressiveRetryStrategy) GetMaxRetries(testCase *testCase) int {
 	// Skip retries for tests that exceed duration limit
-	if testCase.duration >= maxIntraRunRetryDuration {
+	if testCase.duration >= aggressiveMaximumTestDuration {
 		return 0
 	}
 	return s.maxRetries
@@ -183,11 +189,24 @@ func (s *AggressiveRetryStrategy) ShouldContinue(testCase *testCase, allAttempts
 	}
 
 	// Skip retries for tests that exceed duration limit
-	if testCase.duration >= maxIntraRunRetryDuration {
+	if testCase.duration >= aggressiveMaximumTestDuration {
 		return false
 	}
 
-	// In multi-retry mode, continue until we reach max attempts regardless of results
+	// Count current failures to avoid unnecessary retries
+	failureCount := 0
+	for _, attempt := range allAttempts {
+		if attempt.failed {
+			failureCount++
+		}
+	}
+
+	// Stop retrying if we've already reached the failure threshold - we know the test will fail
+	if failureCount >= s.failureThreshold {
+		return false
+	}
+
+	// In multi-retry mode, continue until we reach max attempts or failure threshold
 	return true
 }
 
@@ -238,7 +257,7 @@ func createRetryStrategy(name string) (RetryStrategy, error) {
 	case "once":
 		return NewRetryOnceStrategy(), nil
 	case "aggressive":
-		return NewAggressiveRetryStrategy(maxIntraRunRetryAttempts, intraRunFlakeThreshold), nil
+		return NewAggressiveRetryStrategy(aggressiveMaxRetries, aggressiveMinFailureThreshold), nil
 	case "none":
 		return &NoRetryStrategy{}, nil
 	default:

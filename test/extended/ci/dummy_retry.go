@@ -17,13 +17,14 @@ Example usage:
 	$ echo '"[sig-ci] Test should fail at a configurable rate"' | \
 		DUMMY_FAILURE_RATE=1.0 ./openshift-tests run all --retry-strategy aggressive --junit-dir=/tmp/junit -f -
 */
-var _ = g.Describe("[sig-ci] Test should fail", func() {
+var _ = g.Describe("[sig-ci] [Suite:none] Test should fail", func() {
 	defer g.GinkgoRecover()
 
 	g.It("at a configurable rate", func() {
 		failureRateStr := os.Getenv("DUMMY_FAILURE_RATE")
 		if failureRateStr == "" {
-			failureRateStr = "0.0" // Always passes
+			// Default is always passes just in case this test is accidentally run in CI...
+			failureRateStr = "0.0"
 		}
 
 		failureRate, err := strconv.ParseFloat(failureRateStr, 32)

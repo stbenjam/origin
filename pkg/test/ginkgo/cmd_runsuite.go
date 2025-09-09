@@ -755,7 +755,7 @@ func (o *GinkgoRunSuiteOptions) performRetries(ctx context.Context, tests []*tes
 				}
 			}
 			hasAnySuccess := successCount > 0
-			rollupTest := o.createMultiRetryTest(testName, attempts, hasAnySuccess)
+			rollupTest := o.createSingleFailureRollupTest(testName, attempts, hasAnySuccess)
 
 			// Replace original failed test with rollup test
 			for i, t := range tests {
@@ -784,7 +784,7 @@ func (o *GinkgoRunSuiteOptions) performRetries(ctx context.Context, tests []*tes
 		failing = append(failing, stillFailing...)
 
 		sort.Strings(finalFlaky)
-		fmt.Fprintf(o.Out, "Flaky tests (allowed to pass by retry strategy):\n\n%s\n\n", strings.Join(finalFlaky, "\n"))
+		fmt.Fprintf(o.Out, "Flaky tests:\n\n%s\n\n", strings.Join(finalFlaky, "\n"))
 	} else {
 		failing = append(failing, stillFailing...)
 	}
@@ -822,33 +822,9 @@ func (o *GinkgoRunSuiteOptions) performRetries(ctx context.Context, tests []*tes
 	return tests, failing, len(finalFlaky)
 }
 
-// updateOriginalTestWithRetryInfo updates the original test with information about retry attempts
-func (o *GinkgoRunSuiteOptions) updateOriginalTestWithRetryInfo(originalTest *testCase, attempts []*testCase) *testCase {
-	var combinedOutput strings.Builder
-
-	failureCount := 0
-	for _, attempt := range attempts {
-		if attempt.failed {
-			failureCount++
-		}
-	}
-
-	combinedOutput.WriteString(fmt.Sprintf("*** ALLOWED TO PASS DESPITE FAILURES: This test failed %d out of %d attempts, but was allowed to pass by the retry strategy.\n\n",
-		failureCount, len(attempts)))
-
-	for i, attempt := range attempts {
-		combinedOutput.WriteString(fmt.Sprintf("=== Attempt %d ===\n", i+1))
-		combinedOutput.Write(attempt.testOutputBytes)
-		combinedOutput.WriteString("\n\n")
-	}
-
-	updatedTest := *originalTest
-	updatedTest.testOutputBytes = []byte(combinedOutput.String())
-	return &updatedTest
-}
-
-// createMultiRetryTest creates a rollup test case combining all retry attempts
-func (o *GinkgoRunSuiteOptions) createMultiRetryTest(testName string, attempts []*testCase, hasAnySuccess bool) *testCase {
+// createSingleFailureRollupTest creates a rollup test case combining all retry attempts. This is needed to produce a single failure
+// artifact, otherwise our systems would consider it a flake.
+func (o *GinkgoRunSuiteOptions) createSingleFailureRollupTest(testName string, attempts []*testCase, hasAnySuccess bool) *testCase {
 	var combinedOutput strings.Builder
 
 	failureCount := 0
