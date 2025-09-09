@@ -336,11 +336,20 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 	}()
 	signal.Notify(abortCh, syscall.SIGINT, syscall.SIGTERM)
 
-	/*logrus.Infof("Waiting for all cluster operators to become stable")
-	stableClusterTestResults, err := clusterinfo.WaitForStableCluster(ctx, restConfig)
-	if err != nil {
-		logrus.Errorf("Error waiting for stable cluster: %v", err)
-	}*/
+	// Skip stable cluster check if OPENSHIFT_TESTS_SKIP_STABLE_CLUSTER is set.
+	// This is useful in development for rapid iteration where cluster stability
+	// verification may be unnecessary and time-consuming.
+	var stableClusterTestResults []*junitapi.JUnitTestCase
+	if os.Getenv("OPENSHIFT_TESTS_SKIP_STABLE_CLUSTER") == "" {
+		logrus.Infof("Waiting for all cluster operators to become stable")
+		var err error
+		stableClusterTestResults, err = clusterinfo.WaitForStableCluster(ctx, restConfig)
+		if err != nil {
+			logrus.Errorf("Error waiting for stable cluster: %v", err)
+		}
+	} else {
+		logrus.Infof("Skipping stable cluster check due to OPENSHIFT_TESTS_SKIP_STABLE_CLUSTER environment variable")
+	}
 
 	monitorTests, err := defaultmonitortests.NewMonitorTestsFor(monitorTestInfo)
 	if err != nil {
@@ -522,7 +531,7 @@ func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdisc
 	// monitor the cluster while the tests are running and report any detected anomalies
 	var syntheticTestResults []*junitapi.JUnitTestCase
 	var syntheticFailure bool
-	//syntheticTestResults = append(syntheticTestResults, stableClusterTestResults...)
+	syntheticTestResults = append(syntheticTestResults, stableClusterTestResults...)
 	syntheticTestResults = append(syntheticTestResults, skippedAnnotationSyntheticTestResults...)
 
 	timeSuffix := fmt.Sprintf("_%s", start.UTC().Format("20060102-150405"))
