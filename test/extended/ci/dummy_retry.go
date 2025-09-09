@@ -15,7 +15,7 @@ import (
 Example usage:
 
 	$ echo '"[sig-ci] Test should fail at a configurable rate"' | \
-		DUMMY_FAILURE_RATE=1.0 ./openshift-tests run all --retry-policy multi --junit-dir=/tmp/junit -f -
+		DUMMY_FAILURE_RATE=1.0 ./openshift-tests run all --retry-strategy aggressive --junit-dir=/tmp/junit -f -
 */
 var _ = g.Describe("[sig-ci] Test should fail", func() {
 	defer g.GinkgoRecover()
