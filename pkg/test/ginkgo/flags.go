@@ -10,13 +10,13 @@ func newRetryStrategyFlag(strategy *RetryStrategy) *retryStrategyFlag {
 
 func (r *retryStrategyFlag) String() string {
 	if r.strategy == nil || *r.strategy == nil {
-		return defaultRetryStrategy
+		return ""
 	}
 	return (*r.strategy).Name()
 }
 
 func (r *retryStrategyFlag) Set(value string) error {
-	strategy, err := createRetryStrategy(value)
+	strategy, err := createRetryStrategy(RetryStrategyType(value))
 	if err != nil {
 		return err
 	}

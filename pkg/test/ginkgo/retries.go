@@ -13,15 +13,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RetryStrategyType represents the type of retry strategy to use
+type RetryStrategyType string
+
 const (
-	defaultRetryStrategy = "once"
+	// RetryOnce allows retries only once with specific rules
+	RetryOnce RetryStrategyType = "once"
+	// RetryAggressive allows multiple aggressive retries
+	RetryAggressive RetryStrategyType = "aggressive"
+	// RetryNone disables retries completely
+	RetryNone RetryStrategyType = "none"
+)
+
+const (
+	defaultRetryStrategy = RetryOnce
+	// defaultMaxRetryableFailures is the default when suite doesn't specify
+	defaultMaxRetryableFailures = 5
 
 	// Aggressive strategy constants:
 	// won't attempt to retry tests that take longer than this -
 	// openshift-tests 95th percentile is just a little over 3 minutes
 	aggressiveMaximumTestDuration = 4 * time.Minute
-	// won't attempt any retries in "catastrophic" runs > 5 failures
-	aggressiveMaxDistinctTestFailures = 5
 	// will retry the test up to this many times - but could be fewer
 	aggressiveMaxRetries = 10
 	// will consider a test flaky if it fails less than this many times
@@ -70,11 +82,15 @@ func NewRetryOnceStrategy() *RetryOnceStrategy {
 }
 
 func (s *RetryOnceStrategy) Name() string {
-	return "once"
+	return string(RetryOnce)
 }
 
 func (s *RetryOnceStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
-	return len(failing) > 0 && len(failing) <= suite.MaximumAllowedFlakes
+	maxFailures := suite.MaxRetryableFailures
+	if maxFailures == 0 {
+		maxFailures = defaultMaxRetryableFailures
+	}
+	return len(failing) > 0 && len(failing) <= maxFailures
 }
 
 func (s *RetryOnceStrategy) GetMaxRetries(testCase *testCase) int {
@@ -172,11 +188,16 @@ func NewAggressiveRetryStrategy(maxRetries, failureThreshold int) *AggressiveRet
 }
 
 func (s *AggressiveRetryStrategy) Name() string {
-	return "aggressive"
+	return string(RetryAggressive)
 }
 
 func (s *AggressiveRetryStrategy) ShouldAttemptRetries(failing []*testCase, suite *TestSuite) bool {
-	return len(failing) > 0 && len(failing) <= aggressiveMaxDistinctTestFailures
+	maxFailures := suite.MaxRetryableFailures
+	if maxFailures == 0 {
+		maxFailures = defaultMaxRetryableFailures
+	}
+
+	return len(failing) > 0 && len(failing) <= maxFailures
 }
 
 func (s *AggressiveRetryStrategy) GetMaxRetries(testCase *testCase) int {
@@ -257,7 +278,7 @@ func (s *AggressiveRetryStrategy) DecideOutcome(attempts []*testCase) RetryOutco
 
 type NoRetryStrategy struct{}
 
-func (s *NoRetryStrategy) Name() string { return "none" }
+func (s *NoRetryStrategy) Name() string { return string(RetryNone) }
 func (s *NoRetryStrategy) ShouldAttemptRetries(_ []*testCase, _ *TestSuite) bool {
 	return false
 }
@@ -270,19 +291,19 @@ func (s *NoRetryStrategy) DecideOutcome(_ []*testCase) RetryOutcome {
 }
 
 func getAvailableRetryStrategies() []string {
-	return []string{"once", "aggressive", "none"}
+	return []string{string(RetryOnce), string(RetryAggressive), string(RetryNone)}
 }
 
-func createRetryStrategy(name string) (RetryStrategy, error) {
-	switch name {
-	case "once":
+func createRetryStrategy(strategyType RetryStrategyType) (RetryStrategy, error) {
+	switch strategyType {
+	case RetryOnce:
 		return NewRetryOnceStrategy(), nil
-	case "aggressive":
+	case RetryAggressive:
 		return NewAggressiveRetryStrategy(aggressiveMaxRetries, aggressiveMinFailureThreshold), nil
-	case "none":
+	case RetryNone:
 		return &NoRetryStrategy{}, nil
 	default:
-		return nil, fmt.Errorf("unknown retry strategy: %s (available: %v)", name, getAvailableRetryStrategies())
+		return nil, fmt.Errorf("unknown retry strategy: %s (available: %v)", strategyType, getAvailableRetryStrategies())
 	}
 }
 

@@ -135,7 +135,8 @@ var staticSuites = []ginkgo.TestSuite{
 			withExcludedTestsFilter("name.contains('[Suite:openshift/conformance/parallel')"),
 		},
 		Parallelism:          30,
-		MaximumAllowedFlakes: 15,
+		RetryStrategy:        ginkgo.RetryOnce,
+		MaxRetryableFailures: 10,
 	},
 	{
 		Name: "openshift/conformance/serial",
@@ -169,9 +170,9 @@ var staticSuites = []ginkgo.TestSuite{
 		Qualifiers: []string{
 			withStandardEarlyOrLateTests("name.contains('[Feature:Builds]')"),
 		},
-		Parallelism: 7,
-		// TODO: Builds are really flaky right now, remove when we land perf updates and fix io on workers
-		MaximumAllowedFlakes: 3,
+		Parallelism:          7,
+		RetryStrategy:        ginkgo.RetryOnce,
+		MaxRetryableFailures: 3,
 		// Jenkins tests can take a really long time
 		TestTimeout: 60 * time.Minute,
 	},

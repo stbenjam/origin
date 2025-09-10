@@ -121,8 +121,12 @@ type TestSuite struct {
 	Count int `json:"count,omitempty"`
 	// The maximum parallelism of this suite.
 	Parallelism int `json:"parallelism,omitempty"`
-	// The number of flakes that may occur before this test is marked as a failure.
-	MaximumAllowedFlakes int `json:"maximumAllowedFlakes,omitempty"`
+
+	// RetryStrategy controls retry behavior and final outcome decisions for this suite.
+	RetryStrategy RetryStrategyType `json:"retryStrategy,omitempty"`
+	// MaxRetryableFailures sets the maximum number of distinct test failures that can occur
+	// before the run is considered catastrophic and retries are disabled entirely.
+	MaxRetryableFailures int `json:"maxRetryableFailures,omitempty"`
 
 	ClusterStabilityDuringTest ClusterStabilityDuringTest `json:"clusterStabilityDuringTest,omitempty"`
 

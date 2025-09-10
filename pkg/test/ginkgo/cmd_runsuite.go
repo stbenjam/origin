@@ -95,19 +95,14 @@ type GinkgoRunSuiteOptions struct {
 	Extension           *extension.Extension
 
 	// RetryStrategy controls retry behavior and final outcome decisions
+	// If nil, will be resolved from suite configuration
 	RetryStrategy RetryStrategy
 }
 
 func NewGinkgoRunSuiteOptions(streams genericclioptions.IOStreams) *GinkgoRunSuiteOptions {
-	defaultStrategy, err := createRetryStrategy(defaultRetryStrategy)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create default retry strategy: %v", err))
-	}
-
 	return &GinkgoRunSuiteOptions{
 		IOStreams:     streams,
 		ShardStrategy: "hash",
-		RetryStrategy: defaultStrategy,
 	}
 }
 
@@ -132,7 +127,7 @@ func (o *GinkgoRunSuiteOptions) BindFlags(flags *pflag.FlagSet) {
 	flags.IntVar(&o.ShardCount, "shard-count", o.ShardCount, "Number of shards used to run tests across multiple instances")
 	flags.StringVar(&o.ShardStrategy, "shard-strategy", o.ShardStrategy, "Which strategy to use for sharding (hash)")
 	availableStrategies := getAvailableRetryStrategies()
-	flags.Var(newRetryStrategyFlag(&o.RetryStrategy), "retry-strategy", fmt.Sprintf("Test retry strategy (available: %s, default: %s)", strings.Join(availableStrategies, ", "), defaultRetryStrategy))
+	flags.Var(newRetryStrategyFlag(&o.RetryStrategy), "retry-strategy", fmt.Sprintf("Test retry strategy (available: %s, default: use suite's strategy)", strings.Join(availableStrategies, ", ")))
 }
 
 func (o *GinkgoRunSuiteOptions) Validate() error {
@@ -141,6 +136,34 @@ func (o *GinkgoRunSuiteOptions) Validate() error {
 	default:
 		return fmt.Errorf("unknown --cluster-stability, %q, expected Stable or Disruptive", o.ClusterStabilityDuringTest)
 	}
+	return nil
+}
+
+// ResolveRetryConfiguration applies CLI overrides to the suite's retry configuration
+func (o *GinkgoRunSuiteOptions) ResolveRetryConfiguration(suite *TestSuite) error {
+	// If CLI flag was set, use that - otherwise determine from suite
+	if o.RetryStrategy != nil {
+		logrus.Infof("Retry strategy: %s (source: CLI --retry-strategy flag)", o.RetryStrategy.Name())
+		return nil
+	}
+
+	// Determine retry strategy from suite or default
+	var strategy RetryStrategyType
+	if suite.RetryStrategy != "" {
+		strategy = suite.RetryStrategy
+		logrus.Infof("Retry strategy: %s (source: suite configuration)", strategy)
+	} else {
+		strategy = defaultRetryStrategy
+		logrus.Infof("Retry strategy: %s (source: global default)", strategy)
+	}
+
+	// Create the retry strategy
+	retryStrategy, err := createRetryStrategy(strategy)
+	if err != nil {
+		return fmt.Errorf("failed to create retry strategy %s: %w", strategy, err)
+	}
+	o.RetryStrategy = retryStrategy
+
 	return nil
 }
 
@@ -165,6 +188,12 @@ func max(a, b int) int {
 func (o *GinkgoRunSuiteOptions) Run(suite *TestSuite, clusterConfig *clusterdiscovery.ClusterConfiguration, junitSuiteName string, monitorTestInfo monitortestframework.MonitorTestInitializationInfo,
 	upgrade bool) error {
 	ctx := context.Background()
+
+	// Resolve retry configuration by applying CLI overrides to suite defaults
+	if err := o.ResolveRetryConfiguration(suite); err != nil {
+		return fmt.Errorf("failed to resolve retry configuration: %w", err)
+	}
+
 	var sharder Sharder
 	switch o.ShardStrategy {
 	default:
